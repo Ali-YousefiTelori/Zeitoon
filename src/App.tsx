@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import ChooseContentNavbar from "./components/ChooseContentNavbar";
 import MyHeader from "./components/MyHeader";
+import ReadingBootstrap from "./components/ReadingBootstrap";
 import { About } from "./pages/About";
 import Passage from "./pages/Passage";
+import { Readings } from "./pages/Readings";
 import { Search } from "./pages/Search";
 import { Settings } from "./pages/Settings";
 import { useBibleStore } from "./store";
@@ -34,7 +36,8 @@ export default function App() {
         withNormalizeCSS
       >
         <HashRouter>
-          <AppShell
+          <ReadingBootstrap>
+            <AppShell
             pl="0"
             navbar={<ChooseContentNavbar opened={opened} setOpened={setOpened} />}
             header={
@@ -80,8 +83,10 @@ export default function App() {
               /> */}
               <Route key={0} path="/saved" element={<SavedVerses />} />
               <Route key={0} path="/settings" element={<Settings />} />
+              <Route key={0} path="/readings" element={<Readings />} />
             </Routes>
           </AppShell>
+          </ReadingBootstrap>
         </HashRouter>
       </MantineProvider>
     </ColorSchemeProvider>

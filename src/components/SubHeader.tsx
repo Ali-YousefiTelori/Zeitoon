@@ -21,7 +21,7 @@ const SubHeader = () => {
     <Box
       sx={{
         marginTop: 10,
-        height: rem(30),
+        minHeight: rem(40),
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
