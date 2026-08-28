@@ -1,7 +1,7 @@
 import { AppShell, ColorScheme, ColorSchemeProvider, MantineProvider } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { useEffect, useState } from "react";
-import { BrowserRouter, Navigate, /*HashRouter,*/ Route, Routes } from "react-router-dom";
+import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import ChooseContentNavbar from "./components/ChooseContentNavbar";
 import MyHeader from "./components/MyHeader";
 import { About } from "./pages/About";
@@ -32,7 +32,7 @@ export default function App() {
         withGlobalStyles
         withNormalizeCSS
       >
-        <BrowserRouter>
+        <HashRouter>
           <AppShell
             pl="0"
             navbar={<ChooseContentNavbar opened={opened} setOpened={setOpened} />}
@@ -54,7 +54,6 @@ export default function App() {
               },
             })}
           >
-            {/* <HashRouter> */}
             <Routes>
               <Route
                 path="*"
@@ -80,9 +79,8 @@ export default function App() {
               /> */}
               <Route key={0} path="/saved" element={<SavedVerses />} />
             </Routes>
-            {/* </HashRouter> */}
           </AppShell>
-        </BrowserRouter>
+        </HashRouter>
       </MantineProvider>
     </ColorSchemeProvider>
   );
