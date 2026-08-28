@@ -16,7 +16,7 @@ import { useInputState } from "@mantine/hooks";
 import { IconBookmark, IconBookmarkFilled, IconCheck, IconCopy } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { createVerseKey } from "../helpers/utils";
+import { formatVerseForCopy } from "../helpers/utils";
 import { useBibleStore } from "../store";
 import { ContentSpoiler } from "./ContentSpoiler";
 import { VerseDetails } from "./VerseDetails";
@@ -50,6 +50,9 @@ function MoreInformationDrawer({
   const activeVerse = Number(useParams().activeVerse);
   const setSavedVerses = useBibleStore(state => state.setSavedVerses);
   const savedVerses = useBibleStore(state => state.savedVerses);
+  const copyIncludeOriginalText = useBibleStore(state => state.copyIncludeOriginalText);
+  const copyIncludeTransliteration = useBibleStore(state => state.copyIncludeTransliteration);
+  const copyIncludeTranslation = useBibleStore(state => state.copyIncludeTranslation);
 
   const [savedKeyValue, setSavedKeyValue] = useInputState("");
   const [popoverOpened, setPopoverOpened] = useState(false);
@@ -111,7 +114,21 @@ function MoreInformationDrawer({
               >
                 {activeBook}, {activeChapter}, {activeVerse}
                 <CopyButton
-                  value={createVerseKey(originalText, text, activeBook, activeChapter, activeVerse)}
+                  value={formatVerseForCopy(
+                    {
+                      originalText,
+                      transliteration,
+                      text,
+                      bookName: activeBook,
+                      chapter: activeChapter,
+                      verse: activeVerse,
+                    },
+                    {
+                      includeOriginalText: copyIncludeOriginalText,
+                      includeTransliteration: copyIncludeTransliteration,
+                      includeTranslation: copyIncludeTranslation,
+                    },
+                  )}
                   timeout={2000}
                 >
                   {({ copied, copy }) => (

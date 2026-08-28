@@ -7,6 +7,7 @@ import MyHeader from "./components/MyHeader";
 import { About } from "./pages/About";
 import Passage from "./pages/Passage";
 import { Search } from "./pages/Search";
+import { Settings } from "./pages/Settings";
 import { useBibleStore } from "./store";
 // import { SearchContent } from "./pages/Content";
 import { SavedVerses } from "./pages/SavedVerses";
@@ -78,6 +79,7 @@ export default function App() {
                 }
               /> */}
               <Route key={0} path="/saved" element={<SavedVerses />} />
+              <Route key={0} path="/settings" element={<Settings />} />
             </Routes>
           </AppShell>
         </HashRouter>

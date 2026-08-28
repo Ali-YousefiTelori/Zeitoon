@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { Book, data } from "../api";
 import CopyVerseButton from "../components/CopyVerseButton";
 import SearchResultVerse from "../components/SearchResultVerse";
+import { formatVerseForCopy, parseVerseSelectionKey } from "../helpers/utils";
 import { SEARCH_BOOKS, SEARCH_TEXT, useBibleStore } from "../store";
 
 const useStyles = createStyles(() => ({
@@ -31,6 +32,9 @@ export function Search() {
   const setSearchBook = useBibleStore(state => state.setSearchBook);
   const setSearchText = useBibleStore(state => state.setSearchText);
   const setSearchKey = useBibleStore(state => state.setSearchKey);
+  const copyIncludeOriginalText = useBibleStore(state => state.copyIncludeOriginalText);
+  const copyIncludeTransliteration = useBibleStore(state => state.copyIncludeTransliteration);
+  const copyIncludeTranslation = useBibleStore(state => state.copyIncludeTranslation);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [debouncedSearchKey] = useDebouncedValue(searchKey, 200);
   const [selectedVerses, setSelectedVerses] = useState<string[]>([]);
@@ -44,7 +48,39 @@ export function Search() {
   };
 
   const handleOnMultipleCopy = () => {
-    navigator.clipboard.writeText(selectedVerses.join("\n\n"));
+    const copyOptions = {
+      includeOriginalText: copyIncludeOriginalText,
+      includeTransliteration: copyIncludeTransliteration,
+      includeTranslation: copyIncludeTranslation,
+    };
+
+    const copiedText = selectedVerses
+      .map(key => {
+        const { bookName, chapter, verse } = parseVerseSelectionKey(key);
+        const verseData = searchResults.find(
+          item =>
+            item.book_name === bookName &&
+            Number(item.chapter) === chapter &&
+            item.verse === verse,
+        );
+        if (!verseData) return "";
+
+        return formatVerseForCopy(
+          {
+            originalText: verseData.originalText,
+            transliteration: verseData.transliteration,
+            text: verseData.text,
+            bookName,
+            chapter: Number(chapter),
+            verse,
+          },
+          copyOptions,
+        );
+      })
+      .filter(Boolean)
+      .join("\n\n");
+
+    navigator.clipboard.writeText(copiedText);
     setSelectedVerses([]);
   };
 

@@ -3,7 +3,7 @@ import { IconDotsCircleHorizontal } from "@tabler/icons-react";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import reactStringReplace from "react-string-replace";
-import { createVerseKey } from "../helpers/utils";
+import { createVerseSelectionKey } from "../helpers/utils";
 import useLongPress from "../hooks/useLongPress";
 import { useBibleStore } from "../store";
 
@@ -27,7 +27,7 @@ const SearchResultVerse = ({
   addUniqueSelectedVerse,
   verse,
   text,
-  originalText,
+  originalText: _originalText,
   transliteration,
   hasContent,
   book_name,
@@ -54,7 +54,7 @@ const SearchResultVerse = ({
       ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 0);
 
-  const verseKey = createVerseKey(originalText, text, book_name, Number(chapter), verse);
+  const verseKey = createVerseSelectionKey(book_name, Number(chapter), verse);
 
   const onLongPress = () => {
     setSearchedVerse(`/${book_name}/${chapter}/${verse}`);

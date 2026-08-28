@@ -1,7 +1,7 @@
 import { Box, Flex, Text, createStyles } from "@mantine/core";
 import { useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createVerseKey } from "../helpers/utils";
+import { createVerseSelectionKey } from "../helpers/utils";
 import useLongPress from "../hooks/useLongPress";
 import { useBibleStore } from "../store";
 import { VerseDetails } from "./VerseDetails";
@@ -51,9 +51,7 @@ const Verse = ({
   const showOriginalTextSetting = useBibleStore(state => state.showOriginalTextSetting);
   const setActiveVerse = useBibleStore(state => state.setActiveVerse);
 
-  const verseKey = createVerseKey(
-    originalText,
-    text,
+  const verseKey = createVerseSelectionKey(
     activeBookFromParams,
     activeChapterFromParams,
     verse,

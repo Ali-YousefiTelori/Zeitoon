@@ -19,6 +19,7 @@ import {
   IconCheck,
   IconFolders,
   IconMoonStars,
+  IconSettings,
   IconSettings2,
   IconSun,
   IconX,
@@ -126,6 +127,13 @@ const MyHeader = ({
                 }
               >
                 اصل متن
+              </Menu.Item>
+
+              <Menu.Item
+                onClick={() => navigate("/settings")}
+                icon={<IconSettings className={classes.icons} />}
+              >
+                تنظیمات
               </Menu.Item>
 
               <Menu.Item

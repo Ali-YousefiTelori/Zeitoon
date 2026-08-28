@@ -7,11 +7,16 @@ import CopyVerseButton from "../components/CopyVerseButton";
 import MoreInformationDrawer from "../components/MoreInformationDrawer";
 import SubHeader from "../components/SubHeader";
 import Verse from "../components/Verse";
+import { formatVerseForCopy, parseVerseSelectionKey } from "../helpers/utils";
+import { useBibleStore } from "../store";
 
 const Passage = () => {
   const [selectedVerses, setSelectedVerses] = useState<string[]>([]);
   const activeBook: string = useParams().activeBook as string;
   const activeChapter = Number(useParams().activeChapter);
+  const copyIncludeOriginalText = useBibleStore(state => state.copyIncludeOriginalText);
+  const copyIncludeTransliteration = useBibleStore(state => state.copyIncludeTransliteration);
+  const copyIncludeTranslation = useBibleStore(state => state.copyIncludeTranslation);
   const [versesInChaper, setVersesInChaper] = useState<
     {
       verse: number;
@@ -56,7 +61,34 @@ const Passage = () => {
   }, [activeBook, activeChapter]);
 
   const handleOnMultipleCopy = () => {
-    navigator.clipboard.writeText(selectedVerses.join("\n\n"));
+    const copyOptions = {
+      includeOriginalText: copyIncludeOriginalText,
+      includeTransliteration: copyIncludeTransliteration,
+      includeTranslation: copyIncludeTranslation,
+    };
+
+    const copiedText = selectedVerses
+      .map(key => {
+        const { verse } = parseVerseSelectionKey(key);
+        const verseData = versesInChaper.find(item => item.verse === verse);
+        if (!verseData) return "";
+
+        return formatVerseForCopy(
+          {
+            originalText: verseData.originalText,
+            transliteration: verseData.transliteration,
+            text: verseData.text,
+            bookName: activeBook,
+            chapter: activeChapter,
+            verse,
+          },
+          copyOptions,
+        );
+      })
+      .filter(Boolean)
+      .join("\n\n");
+
+    navigator.clipboard.writeText(copiedText);
     setSelectedVerses([]);
   };
 
