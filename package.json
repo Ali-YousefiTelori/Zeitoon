@@ -21,7 +21,10 @@
     "test": "vitest --ui",
     "coverage": "vitest run --coverage",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:apk": "npm run android:sync && npm run android:assemble",
+    "android:assemble": "node -e \"require('child_process').execSync('gradlew.bat assembleRelease -I init.gradle', {cwd: 'android', stdio: 'inherit', env: process.env})\""
   },
   "build": {
     "appId": "com.bible",
@@ -39,6 +42,9 @@
     }
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
     "@emotion/react": "^11.11.0",
     "@mantine/carousel": "^6.0.11",
     "@mantine/core": "^6.0.11",

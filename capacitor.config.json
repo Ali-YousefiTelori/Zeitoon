@@ -1,0 +1,8 @@
+{
+  "appId": "com.zeitoon.app",
+  "appName": "زیتون",
+  "webDir": "build",
+  "android": {
+    "allowMixedContent": true
+  }
+}
