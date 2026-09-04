@@ -1,7 +1,7 @@
 import { AppShell, ColorScheme, ColorSchemeProvider, MantineProvider } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { useEffect, useState } from "react";
-import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import { HashRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import ChooseContentNavbar from "./components/ChooseContentNavbar";
 import MyHeader from "./components/MyHeader";
 import ReadingBootstrap from "./components/ReadingBootstrap";
@@ -13,6 +13,25 @@ import { Settings } from "./pages/Settings";
 import { useBibleStore } from "./store";
 // import { SearchContent } from "./pages/Content";
 import { SavedVerses } from "./pages/SavedVerses";
+import { configureNotifications, listenForNotificationClicks } from "./services/notifications";
+
+function NotificationManager() {
+  const navigate = useNavigate();
+  const notificationsEnabled = useBibleStore(state => state.notificationsEnabled);
+  const notificationIntervalHours = useBibleStore(state => state.notificationIntervalHours);
+
+  useEffect(() => {
+    let cancel: (() => void) | undefined;
+    configureNotifications(notificationsEnabled, notificationIntervalHours).then(cleanup => {
+      cancel = cleanup;
+    });
+    return () => cancel?.();
+  }, [notificationsEnabled, notificationIntervalHours]);
+
+  useEffect(() => listenForNotificationClicks(route => navigate(route)), [navigate]);
+
+  return null;
+}
 
 export default function App() {
   const activeBook = useBibleStore(state => state.activeBook);
@@ -40,6 +59,7 @@ export default function App() {
         withNormalizeCSS
       >
         <HashRouter>
+          <NotificationManager />
           <ReadingBootstrap>
             <AppShell
             pl="0"

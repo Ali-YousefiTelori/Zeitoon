@@ -3,7 +3,7 @@
   "author": "Peymanhc",
   "description": "Divine books",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.1",
   "main": "main.js",
   "type": "commonjs",
   "homepage": "https://RealIslamic.github.io/Zeitoon",
@@ -31,7 +31,8 @@
     "files": [
       "build/**/*",
       "main.js",
-      "preload.js"
+      "preload.js",
+      "src/assets/data.json"
     ],
     "directories": {
       "buildResources": "assets"
@@ -45,6 +46,7 @@
     "@capacitor/android": "^6.2.1",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
+    "@capacitor/local-notifications": "^6.1.3",
     "@emotion/react": "^11.11.0",
     "@mantine/carousel": "^6.0.11",
     "@mantine/core": "^6.0.11",

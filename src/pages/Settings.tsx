@@ -1,4 +1,15 @@
-import { Checkbox, Divider, ScrollArea, SegmentedControl, Stack, Text, Title } from "@mantine/core";
+import {
+  Checkbox,
+  Divider,
+  NumberInput,
+  ScrollArea,
+  SegmentedControl,
+  Stack,
+  Switch,
+  Text,
+  Title,
+} from "@mantine/core";
+import { notifyRandomVerse } from "../services/notifications";
 import { useBibleStore } from "../store";
 
 export function Settings() {
@@ -10,6 +21,10 @@ export function Settings() {
   const setCopyIncludeTranslation = useBibleStore(state => state.setCopyIncludeTranslation);
   const fontSize = useBibleStore(state => state.fontSize);
   const setFontSize = useBibleStore(state => state.setFontSize);
+  const notificationsEnabled = useBibleStore(state => state.notificationsEnabled);
+  const notificationIntervalHours = useBibleStore(state => state.notificationIntervalHours);
+  const setNotificationsEnabled = useBibleStore(state => state.setNotificationsEnabled);
+  const setNotificationIntervalHours = useBibleStore(state => state.setNotificationIntervalHours);
 
   return (
     <ScrollArea dir="rtl" h="85vh">
@@ -34,6 +49,38 @@ export function Settings() {
             { label: "متوسط", value: "16" },
             { label: "بزرگ", value: "18" },
           ]}
+        />
+
+        <Divider
+          label={
+            <Text size="sm" fw={500}>
+              یادآوری آیه
+            </Text>
+          }
+          labelPosition="center"
+        />
+
+        <Switch
+          label="ارسال نوتیفیکیشن آیه تصادفی"
+          checked={notificationsEnabled}
+          onChange={event => {
+            const enabled = event.currentTarget.checked;
+            setNotificationsEnabled(enabled);
+            if (enabled) void notifyRandomVerse();
+          }}
+        />
+
+        <NumberInput
+          label="فاصله ارسال (ساعت)"
+          description="از زمان فعال‌سازی، هر چند ساعت یک آیه ارسال شود"
+          min={1}
+          max={168}
+          step={1}
+          value={notificationIntervalHours}
+          onChange={value => {
+            if (typeof value === "number") setNotificationIntervalHours(value);
+          }}
+          disabled={!notificationsEnabled}
         />
 
         <Divider

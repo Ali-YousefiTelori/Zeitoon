@@ -88,6 +88,14 @@ cd D:\Github\Zeitoon
 npm run android:apk
 ```
 
+اگر دستور با `BUILD SUCCESSFUL` تمام شد، فایل باید در مسیر زیر وجود داشته باشد. برای بررسی مستقیم در PowerShell:
+
+```powershell
+Get-Item .\android\app\build\outputs\apk\release\app-release.apk
+```
+
+اگر پیام `JAVA_HOME is set to an invalid directory` دیدید، APK ساخته نشده است؛ مقدار `JAVA_HOME` را طبق بخش پیش‌نیاز به مسیر JDK 17 تغییر دهید و دستور را دوباره اجرا کنید.
+
 پس از بالا بردن `versionCode` و `versionName`، همین دستور را اجرا کنید؛ لازم نیست دستور دیگری برای نسخه جدید اضافه شود:
 
 ```powershell
@@ -116,6 +124,8 @@ cd D:\Github\Zeitoon\android
 همین فایل را به گوشی ببرید و نصب کنید. اگر نصب مسدود شد، در تنظیمات اندروید اجازهٔ نصب از منابع ناشناس را برای همان برنامهٔ فایل‌منیجر روشن کنید.
 
 برای اطمینان از نسخه‌ای که در APK ساخته شده است، مقدارهای `versionCode` و `versionName` را در `android\app\build.gradle` بررسی کنید. قبل از انتشار، APK نسخه جدید را روی نسخه قبلی نصب و مسیر آپدیت را آزمایش کنید.
+
+نام فایل APK همیشه `app-release.apk` است؛ نسخه درون فایل ذخیره می‌شود و در نام فایل نمایش داده نمی‌شود. برای دیدن نسخه واقعی APK، فایل `android\app\build\outputs\apk\release\output-metadata.json` را بررسی کنید.
 
 ## شناسهٔ اپ
 

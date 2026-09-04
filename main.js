@@ -1,5 +1,19 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, Notification, ipcMain } = require("electron");
+const { execFile } = require("child_process");
+const fs = require("fs");
 const path = require("path");
+
+const WINDOWS_TASK_NAME = "Zeitoon Verse Reminder";
+const getRandomNotification = () => {
+  const dataPath = path.join(app.getAppPath(), "src", "assets", "data.json");
+  const data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
+  const verse = data[Math.floor(Math.random() * data.length)];
+  return {
+    title: `آیه‌ای از ${verse.book_name}`,
+    body: `${verse.text} (${verse.book_name} ${verse.chapter}:${verse.verse})`,
+    route: `/${verse.book_name}/${verse.chapter}/${verse.verse}`,
+  };
+};
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -15,7 +29,61 @@ function createWindow() {
   );
 }
 
-app.on("ready", createWindow);
+ipcMain.on("show-notification", (_event, payload) => {
+  const notification = new Notification({
+    title: payload.title,
+    body: payload.body,
+  });
+  notification.on("click", () => {
+    const window = BrowserWindow.getAllWindows()[0];
+    if (!window) return;
+    if (window.isMinimized()) window.restore();
+    window.show();
+    window.focus();
+    window.webContents.send("notification-clicked", payload);
+  });
+  notification.show();
+});
+
+ipcMain.handle("configure-notification-schedule", async (_event, { enabled, intervalHours }) => {
+  if (process.platform !== "win32" || !app.isPackaged) return false;
+
+  if (!enabled) {
+    await new Promise(resolve =>
+      execFile("schtasks.exe", ["/Delete", "/TN", WINDOWS_TASK_NAME, "/F"], () => resolve()),
+    );
+    return true;
+  }
+
+  const executable = process.execPath;
+  await new Promise((resolve, reject) => {
+    execFile(
+      "schtasks.exe",
+      [
+        "/Create",
+        "/SC",
+        "HOURLY",
+        "/MO",
+        String(intervalHours),
+        "/TN",
+        WINDOWS_TASK_NAME,
+        "/TR",
+        `"${executable}" --zeitoon-notification`,
+        "/F",
+      ],
+      error => (error ? reject(error) : resolve()),
+    );
+  });
+  return true;
+});
+
+app.on("ready", () => {
+  createWindow();
+  if (process.argv.includes("--zeitoon-notification")) {
+    const notification = getRandomNotification();
+    new Notification(notification).show();
+  }
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
