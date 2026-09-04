@@ -1,19 +1,37 @@
 import { ActionIcon, Box, Title, rem } from "@mantine/core";
 import { IconArrowLeft, IconArrowRight, IconSearch } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { getQuranSurahNames } from "../api";
+import { getChapters, getQuranSurahNames } from "../api";
 import usePreviousAndNextHandlers from "../hooks/usePreviousAndNext";
 import GoToVerseModal from "./GoToVerseModal";
+import { useEffect, useState } from "react";
 
 const SubHeader = () => {
   const navigate = useNavigate();
   const surahNames = getQuranSurahNames();
   const { activeBook, activeChapter, checkNext, checkPrev, nextHandler, prevHandler } =
     usePreviousAndNextHandlers();
+  const [totalChapters, setTotalChapters] = useState<number | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!activeBook) return;
+
+    getChapters(activeBook).then(chapters => {
+      if (isActive) setTotalChapters(chapters.length || null);
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [activeBook]);
+
   const title =
     activeBook +
     " " +
     activeChapter +
+    (totalChapters ? `/${totalChapters}` : "") +
     " " +
     (activeBook === "قرآن" ? surahNames[activeChapter - 1] : "");
 
