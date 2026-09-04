@@ -18,6 +18,7 @@ export default function App() {
   const activeBook = useBibleStore(state => state.activeBook);
   const activeChapter = useBibleStore(state => state.activeChapter);
   const activeVerse = useBibleStore(state => state.activeVerse);
+  const fontSize = useBibleStore(state => state.fontSize);
   const [colorScheme, setColorScheme] = useLocalStorage<ColorScheme>({
     key: "color-scheme",
     defaultValue: "light",
@@ -28,6 +29,9 @@ export default function App() {
   useEffect(() => {
     document.getElementById("loading-fallback")?.remove();
   }, []);
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${fontSize}px`;
+  }, [fontSize]);
   return (
     <ColorSchemeProvider colorScheme={colorScheme} toggleColorScheme={toggleColorScheme}>
       <MantineProvider

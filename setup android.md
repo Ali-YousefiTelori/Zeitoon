@@ -1,5 +1,25 @@
 برای ساخت APK اندروید ساین‌شده، وب‌اپ با **Vite** بیلد می‌شود و با **Capacitor** داخل یک پروژهٔ Android پیچیده می‌شود. خروجی با **Gradle** (`assembleRelease`) ساخته و با keystore پروژه امضا می‌شود.
 
+## بالا بردن نسخه اندروید
+
+نسخه اندروید در فایل `android\app\build.gradle` و داخل بخش `defaultConfig` تنظیم می‌شود:
+
+```gradle
+versionCode 1
+versionName "1.0"
+```
+
+برای هر انتشار جدید، هر دو مقدار را تغییر دهید. `versionCode` باید یک عدد صحیح و همیشه بزرگ‌تر از نسخه قبلی باشد؛ این مقدار برای تشخیص آپدیت در اندروید و Google Play استفاده می‌شود. `versionName` همان نسخه‌ای است که کاربر می‌بیند.
+
+مثال برای انتشار نسخه بعدی:
+
+```gradle
+versionCode 2
+versionName "1.1"
+```
+
+در نسخه بعدی می‌توانید `versionCode 3` و مثلاً `versionName "1.2"` بگذارید. تغییر `versionName` به‌تنهایی کافی نیست. `applicationId` (`com.zeitoon.app`) و keystore را برای انتشار آپدیت تغییر ندهید.
+
 مسیر واقعی SDK روی این سیستم: `E:\Android\android-sdk`  
 JDK لازم برای بیلد (قابل حمل): `E:\Android\jdk-17`
 
@@ -68,6 +88,12 @@ cd D:\Github\Zeitoon
 npm run android:apk
 ```
 
+پس از بالا بردن `versionCode` و `versionName`، همین دستور را اجرا کنید؛ لازم نیست دستور دیگری برای نسخه جدید اضافه شود:
+
+```powershell
+npm run android:apk
+```
+
 این کار پشت سر هم انجام می‌شود:
 
 1. `npm run build` → TypeScript + Vite، خروجی در `build/`
@@ -88,6 +114,8 @@ cd D:\Github\Zeitoon\android
 | APK ساین‌شده | `android\app\build\outputs\apk\release\app-release.apk` |
 
 همین فایل را به گوشی ببرید و نصب کنید. اگر نصب مسدود شد، در تنظیمات اندروید اجازهٔ نصب از منابع ناشناس را برای همان برنامهٔ فایل‌منیجر روشن کنید.
+
+برای اطمینان از نسخه‌ای که در APK ساخته شده است، مقدارهای `versionCode` و `versionName` را در `android\app\build.gradle` بررسی کنید. قبل از انتشار، APK نسخه جدید را روی نسخه قبلی نصب و مسیر آپدیت را آزمایش کنید.
 
 ## شناسهٔ اپ
 

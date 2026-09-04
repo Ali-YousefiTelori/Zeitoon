@@ -25,6 +25,7 @@ interface BibleState {
   copyIncludeOriginalText: boolean;
   copyIncludeTransliteration: boolean;
   copyIncludeTranslation: boolean;
+  fontSize: number;
   searchedVerse: string;
   savedVerses: any[];
   readings: ReadingSession[];
@@ -41,6 +42,7 @@ interface BibleState {
   setCopyIncludeOriginalText: (value: boolean) => void;
   setCopyIncludeTransliteration: (value: boolean) => void;
   setCopyIncludeTranslation: (value: boolean) => void;
+  setFontSize: (value: number) => void;
   setSearchedVerse: (key: string) => void;
   setSavedVerses: (key: any[]) => void;
   addReading: (name: string, bookName: string) => void;
@@ -64,6 +66,7 @@ export const useBibleStore = create<BibleState>()(
       copyIncludeOriginalText: true,
       copyIncludeTransliteration: true,
       copyIncludeTranslation: true,
+      fontSize: 16,
       searchedVerse: "",
       savedVerses: [],
       readings: [],
@@ -79,6 +82,7 @@ export const useBibleStore = create<BibleState>()(
       setCopyIncludeOriginalText: copyIncludeOriginalText => set({ copyIncludeOriginalText }),
       setCopyIncludeTransliteration: copyIncludeTransliteration => set({ copyIncludeTransliteration }),
       setCopyIncludeTranslation: copyIncludeTranslation => set({ copyIncludeTranslation }),
+      setFontSize: fontSize => set({ fontSize }),
       setActiveVerse: activeVerse => set({ activeVerse }),
       setSearchedVerse: searchedVerse => set({ searchedVerse }),
       setSavedVerses: (savedVerses: any[]) => set({ savedVerses }),
