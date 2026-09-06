@@ -1,10 +1,13 @@
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { getOneQuranSurahNames } from "../api";
 import data from "../assets/data.json";
 
-const ANDROID_NOTIFICATION_DAYS = 90;
+const ANDROID_MAX_SCHEDULED = 48;
+const ANDROID_LEGACY_SCHEDULED = 90 * 24;
 const ANDROID_NOTIFICATION_ID_START = 5000;
 const ANDROID_TEST_NOTIFICATION_ID = 4999;
+const ANDROID_CHANNEL_ID = "verse-reminders-persistent";
 
 export type NotificationPayload = {
   title: string;
@@ -19,7 +22,34 @@ type Verse = {
   text: string;
 };
 
+type ConfigureOptions = {
+  showPreview?: boolean;
+};
+
+let nativeWork: Promise<void> = Promise.resolve();
+
+const runNative = (task: () => Promise<void>) => {
+  const next = nativeWork.then(task, task);
+  nativeWork = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+};
+
 const isElectron = () => Boolean(window.electronNotifications);
+
+const isOurNotificationId = (id: number) =>
+  id === ANDROID_TEST_NOTIFICATION_ID ||
+  (id >= ANDROID_NOTIFICATION_ID_START &&
+    id < ANDROID_NOTIFICATION_ID_START + ANDROID_LEGACY_SCHEDULED);
+
+const cancelInChunks = async (ids: { id: number }[]) => {
+  const chunkSize = 100;
+  for (let index = 0; index < ids.length; index += chunkSize) {
+    await LocalNotifications.cancel({ notifications: ids.slice(index, index + chunkSize) });
+  }
+};
 
 const showBrowserNotification = async (notification: NotificationPayload) => {
   if (!("Notification" in window)) return;
@@ -32,6 +62,7 @@ const showBrowserNotification = async (notification: NotificationPayload) => {
   const browserNotification = new Notification(notification.title, {
     body: notification.body,
     tag: "zeitoon-verse-test",
+    requireInteraction: true,
   });
   browserNotification.onclick = () => {
     window.location.hash = notification.route;
@@ -39,80 +70,150 @@ const showBrowserNotification = async (notification: NotificationPayload) => {
   };
 };
 
+const formatVerseReference = (verse: Verse) => {
+  const surahName = verse.book_name === "قرآن" ? ` ${getOneQuranSurahNames(verse.chapter)}` : "";
+  return `${verse.book_name}${surahName} ${verse.chapter}:${verse.verse}`;
+};
+
 const getRandomNotification = (): NotificationPayload => {
-  const verse = (data[Math.floor(Math.random() * data.length)] as Verse);
+  const verse = data[Math.floor(Math.random() * data.length)] as Verse;
+  const surahName = verse.book_name === "قرآن" ? getOneQuranSurahNames(verse.chapter) : "";
   return {
-    title: `آیه‌ای از ${verse.book_name}`,
-    body: `${verse.text} (${verse.book_name} ${verse.chapter}:${verse.verse})`,
+    title: surahName ? `آیه‌ای از قرآن ${surahName}` : `آیه‌ای از ${verse.book_name}`,
+    body: `${verse.text} (${formatVerseReference(verse)})`,
     route: `/${verse.book_name}/${verse.chapter}/${verse.verse}`,
   };
 };
 
-const cancelAndroidNotifications = async () => {
-  const notificationCount = ANDROID_NOTIFICATION_DAYS * 24;
-  await LocalNotifications.cancel({
-    notifications: Array.from({ length: notificationCount }, (_, index) => ({
+const toAndroidNotification = (
+  notification: NotificationPayload,
+  id: number,
+  at?: Date,
+) => ({
+  id,
+  title: notification.title,
+  body: notification.body,
+  largeBody: notification.body,
+  summaryText: `${notification.title} - مشاهده آیه کامل`,
+  extra: { route: notification.route },
+  channelId: ANDROID_CHANNEL_ID,
+  autoCancel: false,
+  ...(at ? { schedule: { at, allowWhileIdle: true } } : {}),
+});
+
+const getDeliveredIds = async () => {
+  try {
+    const delivered = await LocalNotifications.getDeliveredNotifications();
+    return new Set(delivered.notifications.map(item => item.id));
+  } catch {
+    return new Set<number>();
+  }
+};
+
+const cancelPendingAndroidNotifications = async () => {
+  const deliveredIds = await getDeliveredIds();
+  try {
+    const pending = await LocalNotifications.getPending();
+    const toCancel = pending.notifications
+      .filter(item => isOurNotificationId(item.id) && !deliveredIds.has(item.id))
+      .map(item => ({ id: item.id }));
+    await cancelInChunks(toCancel);
+  } catch {
+    const ids = Array.from({ length: ANDROID_LEGACY_SCHEDULED }, (_, index) => ({
       id: ANDROID_NOTIFICATION_ID_START + index,
-    })),
+    }));
+    ids.push({ id: ANDROID_TEST_NOTIFICATION_ID });
+    await cancelInChunks(ids.filter(item => !deliveredIds.has(item.id)));
+  }
+};
+
+const removeOurDeliveredNotifications = async () => {
+  try {
+    const delivered = await LocalNotifications.getDeliveredNotifications();
+    const ours = delivered.notifications.filter(item => isOurNotificationId(item.id));
+    if (ours.length) {
+      await LocalNotifications.removeDeliveredNotifications({ notifications: ours });
+    }
+  } catch {
+    // Ignore if the device cannot list delivered notifications.
+  }
+};
+
+const ensureAndroidChannel = async () => {
+  await LocalNotifications.createChannel({
+    id: ANDROID_CHANNEL_ID,
+    name: "آیه‌های تصادفی",
+    description: "یادآوری آیه‌های تصادفی",
+    importance: 4,
+    visibility: 1,
+    vibration: true,
   });
 };
 
-const scheduleAndroidNotifications = async (intervalHours: number) => {
+const scheduleAndroidNotifications = async (intervalHours: number, showPreview: boolean) => {
   const permission = await LocalNotifications.requestPermissions();
   if (permission.display !== "granted") return;
 
-  await LocalNotifications.createChannel({
-    id: "verse-reminders",
-    name: "آیه‌های تصادفی",
-    description: "یادآوری آیه‌های تصادفی",
-    importance: 3,
-  });
+  await ensureAndroidChannel();
+  await cancelPendingAndroidNotifications();
 
-  await cancelAndroidNotifications();
-  const firstNotificationAt = Date.now() + intervalHours * 60 * 60 * 1000;
-  const notificationCount = Math.ceil((ANDROID_NOTIFICATION_DAYS * 24) / intervalHours);
-  await LocalNotifications.schedule({
-    notifications: Array.from({ length: notificationCount }, (_, index) => {
-      const notification = getRandomNotification();
-      return {
-        id: ANDROID_NOTIFICATION_ID_START + index,
-        title: notification.title,
-        body: notification.body,
-        largeBody: notification.body,
-        summaryText: `${notification.title} - مشاهده آیه کامل`,
-        extra: { route: notification.route },
-        channelId: "verse-reminders",
-        schedule: { at: new Date(firstNotificationAt + index * intervalHours * 60 * 60 * 1000) },
-      };
-    }),
-  });
+  const deliveredIds = await getDeliveredIds();
+  const safeIntervalHours = Math.max(1, intervalHours);
+  const firstNotificationAt = Date.now() + safeIntervalHours * 60 * 60 * 1000;
+  const notifications = [];
+  let nextId = ANDROID_NOTIFICATION_ID_START;
+
+  for (let index = 0; index < ANDROID_MAX_SCHEDULED; index += 1) {
+    while (deliveredIds.has(nextId)) nextId += 1;
+    deliveredIds.add(nextId);
+    notifications.push(
+      toAndroidNotification(
+        getRandomNotification(),
+        nextId,
+        new Date(firstNotificationAt + index * safeIntervalHours * 60 * 60 * 1000),
+      ),
+    );
+    nextId += 1;
+  }
+
+  const chunkSize = 16;
+  for (let index = 0; index < notifications.length; index += chunkSize) {
+    await LocalNotifications.schedule({
+      notifications: notifications.slice(index, index + chunkSize),
+    });
+  }
+
+  if (showPreview && !deliveredIds.has(ANDROID_TEST_NOTIFICATION_ID)) {
+    await LocalNotifications.schedule({
+      notifications: [
+        toAndroidNotification(
+          getRandomNotification(),
+          ANDROID_TEST_NOTIFICATION_ID,
+          new Date(Date.now() + 1500),
+        ),
+      ],
+    });
+  }
 };
 
 export const notifyRandomVerse = async () => {
   const notification = getRandomNotification();
 
   if (Capacitor.isNativePlatform()) {
-    const permission = await LocalNotifications.requestPermissions();
-    if (permission.display !== "granted") return;
+    await runNative(async () => {
+      const permission = await LocalNotifications.requestPermissions();
+      if (permission.display !== "granted") return;
 
-    await LocalNotifications.createChannel({
-      id: "verse-reminders",
-      name: "آیه‌های تصادفی",
-      description: "یادآوری آیه‌های تصادفی",
-      importance: 3,
-    });
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id: ANDROID_TEST_NOTIFICATION_ID,
-          title: notification.title,
-          body: notification.body,
-          largeBody: notification.body,
-          summaryText: `${notification.title} - مشاهده آیه کامل`,
-          extra: { route: notification.route },
-          channelId: "verse-reminders",
-        },
-      ],
+      await ensureAndroidChannel();
+      await LocalNotifications.schedule({
+        notifications: [
+          toAndroidNotification(
+            notification,
+            ANDROID_TEST_NOTIFICATION_ID,
+            new Date(Date.now() + 1500),
+          ),
+        ],
+      });
     });
     return;
   }
@@ -128,10 +229,20 @@ export const notifyRandomVerse = async () => {
 export const configureNotifications = async (
   enabled: boolean,
   intervalHours: number,
+  options: ConfigureOptions = {},
 ): Promise<(() => void) | undefined> => {
   if (Capacitor.isNativePlatform()) {
-    if (enabled) await scheduleAndroidNotifications(intervalHours);
-    else await cancelAndroidNotifications();
+    await runNative(async () => {
+      try {
+        if (enabled) await scheduleAndroidNotifications(intervalHours, Boolean(options.showPreview));
+        else {
+          await cancelPendingAndroidNotifications();
+          await removeOurDeliveredNotifications();
+        }
+      } catch {
+        // Native binder crashes cannot be caught; keep JS from failing app startup.
+      }
+    });
     return undefined;
   }
 

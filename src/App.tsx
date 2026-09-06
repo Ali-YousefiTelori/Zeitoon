@@ -1,6 +1,6 @@
 import { AppShell, ColorScheme, ColorSchemeProvider, MantineProvider } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import ChooseContentNavbar from "./components/ChooseContentNavbar";
 import MyHeader from "./components/MyHeader";
@@ -19,14 +19,27 @@ function NotificationManager() {
   const navigate = useNavigate();
   const notificationsEnabled = useBibleStore(state => state.notificationsEnabled);
   const notificationIntervalHours = useBibleStore(state => state.notificationIntervalHours);
+  const [hydrated, setHydrated] = useState(() => useBibleStore.persist.hasHydrated());
+  const previousEnabled = useRef<boolean | null>(null);
 
   useEffect(() => {
+    const unsub = useBibleStore.persist.onFinishHydration(() => setHydrated(true));
+    if (useBibleStore.persist.hasHydrated()) setHydrated(true);
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const justEnabled = previousEnabled.current === false && notificationsEnabled;
+    previousEnabled.current = notificationsEnabled;
     let cancel: (() => void) | undefined;
-    configureNotifications(notificationsEnabled, notificationIntervalHours).then(cleanup => {
+    configureNotifications(notificationsEnabled, notificationIntervalHours, {
+      showPreview: justEnabled,
+    }).then(cleanup => {
       cancel = cleanup;
     });
     return () => cancel?.();
-  }, [notificationsEnabled, notificationIntervalHours]);
+  }, [hydrated, notificationsEnabled, notificationIntervalHours]);
 
   useEffect(() => listenForNotificationClicks(route => navigate(route)), [navigate]);
 

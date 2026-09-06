@@ -4,13 +4,23 @@ const fs = require("fs");
 const path = require("path");
 
 const WINDOWS_TASK_NAME = "Zeitoon Verse Reminder";
+const getQuranSurahName = chapter => {
+  const surahNamesPath = path.join(app.getAppPath(), "src", "assets", "surah-names.json");
+  const surahNames = JSON.parse(fs.readFileSync(surahNamesPath, "utf8"));
+  return surahNames[chapter - 1] || "";
+};
+
 const getRandomNotification = () => {
   const dataPath = path.join(app.getAppPath(), "src", "assets", "data.json");
   const data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
   const verse = data[Math.floor(Math.random() * data.length)];
+  const surahName = verse.book_name === "قرآن" ? getQuranSurahName(verse.chapter) : "";
+  const reference = surahName
+    ? `${verse.book_name} ${surahName} ${verse.chapter}:${verse.verse}`
+    : `${verse.book_name} ${verse.chapter}:${verse.verse}`;
   return {
-    title: `آیه‌ای از ${verse.book_name}`,
-    body: `${verse.text} (${verse.book_name} ${verse.chapter}:${verse.verse})`,
+    title: surahName ? `آیه‌ای از قرآن ${surahName}` : `آیه‌ای از ${verse.book_name}`,
+    body: `${verse.text} (${reference})`,
     route: `/${verse.book_name}/${verse.chapter}/${verse.verse}`,
   };
 };

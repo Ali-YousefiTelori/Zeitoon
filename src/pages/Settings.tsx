@@ -1,6 +1,8 @@
 import {
+  Button,
   Checkbox,
   Divider,
+  Group,
   NumberInput,
   ScrollArea,
   SegmentedControl,
@@ -9,10 +11,15 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { notifyRandomVerse } from "../services/notifications";
+import { IconArrowRight } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 import { useBibleStore } from "../store";
 
 export function Settings() {
+  const navigate = useNavigate();
+  const activeBook = useBibleStore(state => state.activeBook);
+  const activeChapter = useBibleStore(state => state.activeChapter);
+  const activeVerse = useBibleStore(state => state.activeVerse);
   const copyIncludeOriginalText = useBibleStore(state => state.copyIncludeOriginalText);
   const copyIncludeTransliteration = useBibleStore(state => state.copyIncludeTransliteration);
   const copyIncludeTranslation = useBibleStore(state => state.copyIncludeTranslation);
@@ -29,7 +36,18 @@ export function Settings() {
   return (
     <ScrollArea dir="rtl" h="85vh">
       <Stack spacing="md" p="md">
-        <Title order={3}>تنظیمات</Title>
+        <Group position="apart" noWrap>
+          <Button
+            variant="light"
+            leftIcon={<IconArrowRight size={16} />}
+            onClick={() =>
+              navigate(`/${activeBook}/${activeChapter}/${activeVerse}`, { replace: true })
+            }
+          >
+            بازگشت به مطالعه
+          </Button>
+          <Title order={3}>تنظیمات</Title>
+        </Group>
 
         <Divider
           label={
@@ -64,9 +82,7 @@ export function Settings() {
           label="ارسال نوتیفیکیشن آیه تصادفی"
           checked={notificationsEnabled}
           onChange={event => {
-            const enabled = event.currentTarget.checked;
-            setNotificationsEnabled(enabled);
-            if (enabled) void notifyRandomVerse();
+            setNotificationsEnabled(event.currentTarget.checked);
           }}
         />
 
