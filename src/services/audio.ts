@@ -1,6 +1,7 @@
 import { getBooks, getChapters } from "../api";
 
 const AUDIO_BASE_URL = "https://www.wordproaudio.net/bibles/app/audio/20";
+const UNSUPPORTED_AUDIO_BOOKS = new Set(["قرآن"]);
 const AUDIO_DB_NAME = "zeitoon-audio";
 const AUDIO_STORE_NAME = "files";
 
@@ -28,6 +29,9 @@ const getBookIndex = async (bookName: string) => {
 };
 
 export const getAudioUrl = async (bookName: string, chapter: number) => {
+  if (UNSUPPORTED_AUDIO_BOOKS.has(bookName)) {
+    throw new Error(`Audio is not available for ${bookName}`);
+  }
   const bookIndex = await getBookIndex(bookName);
   return `${AUDIO_BASE_URL}/${bookIndex}/${chapter}.mp3`;
 };

@@ -26,6 +26,7 @@ interface BibleState {
   copyIncludeTransliteration: boolean;
   copyIncludeTranslation: boolean;
   fontSize: number;
+  playbackRate: number;
   notificationsEnabled: boolean;
   notificationIntervalHours: number;
   searchedVerse: string;
@@ -45,6 +46,7 @@ interface BibleState {
   setCopyIncludeTransliteration: (value: boolean) => void;
   setCopyIncludeTranslation: (value: boolean) => void;
   setFontSize: (value: number) => void;
+  setPlaybackRate: (value: number) => void;
   setNotificationsEnabled: (value: boolean) => void;
   setNotificationIntervalHours: (value: number) => void;
   setSearchedVerse: (key: string) => void;
@@ -71,6 +73,7 @@ export const useBibleStore = create<BibleState>()(
       copyIncludeTransliteration: true,
       copyIncludeTranslation: true,
       fontSize: 16,
+      playbackRate: 1,
       notificationsEnabled: false,
       notificationIntervalHours: 5,
       searchedVerse: "",
@@ -89,6 +92,7 @@ export const useBibleStore = create<BibleState>()(
       setCopyIncludeTransliteration: copyIncludeTransliteration => set({ copyIncludeTransliteration }),
       setCopyIncludeTranslation: copyIncludeTranslation => set({ copyIncludeTranslation }),
       setFontSize: fontSize => set({ fontSize }),
+      setPlaybackRate: playbackRate => set({ playbackRate }),
       setNotificationsEnabled: notificationsEnabled => set({ notificationsEnabled }),
       setNotificationIntervalHours: notificationIntervalHours => set({ notificationIntervalHours }),
       setActiveVerse: activeVerse => set({ activeVerse }),

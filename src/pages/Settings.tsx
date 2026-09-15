@@ -20,6 +20,8 @@ import { getBooks } from "../api";
 import { deleteBookAudio, downloadBookAudio, getBookAudioStatus } from "../services/audio";
 import { useBibleStore } from "../store";
 
+const AUDIO_UNSUPPORTED_BOOKS = new Set(["قرآن"]);
+
 export function Settings() {
   const navigate = useNavigate();
   const [books, setBooks] = useState<string[]>([]);
@@ -42,6 +44,8 @@ export function Settings() {
   const setCopyIncludeTranslation = useBibleStore(state => state.setCopyIncludeTranslation);
   const fontSize = useBibleStore(state => state.fontSize);
   const setFontSize = useBibleStore(state => state.setFontSize);
+  const playbackRate = useBibleStore(state => state.playbackRate);
+  const setPlaybackRate = useBibleStore(state => state.setPlaybackRate);
   const notificationsEnabled = useBibleStore(state => state.notificationsEnabled);
   const notificationIntervalHours = useBibleStore(state => state.notificationIntervalHours);
   const setNotificationsEnabled = useBibleStore(state => state.setNotificationsEnabled);
@@ -49,9 +53,10 @@ export function Settings() {
 
   useEffect(() => {
     getBooks().then(async loadedBooks => {
-      setBooks(loadedBooks);
+      const availableBooks = loadedBooks.filter(book => !AUDIO_UNSUPPORTED_BOOKS.has(book));
+      setBooks(availableBooks);
       const statuses = await Promise.all(
-        loadedBooks.map(async book => [book, (await getBookAudioStatus(book)).isComplete] as const),
+        availableBooks.map(async book => [book, (await getBookAudioStatus(book)).isComplete] as const),
       );
       setCompletedBooks(Object.fromEntries(statuses));
     });
@@ -137,6 +142,21 @@ export function Settings() {
             { label: "متوسط", value: "16" },
             { label: "بزرگ", value: "18" },
           ]}
+        />
+
+        <Select
+          label="سرعت پخش صوت"
+          data={[
+            { label: "1x", value: "1" },
+            { label: "1.25x", value: "1.25" },
+            { label: "1.5x", value: "1.5" },
+            { label: "1.75x", value: "1.75" },
+            { label: "2x", value: "2" },
+          ]}
+          value={String(playbackRate)}
+          onChange={value => {
+            if (value) setPlaybackRate(Number(value));
+          }}
         />
 
         <Divider

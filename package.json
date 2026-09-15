@@ -3,7 +3,7 @@
   "author": "Peymanhc",
   "description": "Divine books",
   "private": true,
-  "version": "1.0.5",
+  "version": "1.0.6",
   "main": "main.js",
   "type": "commonjs",
   "homepage": "https://RealIslamic.github.io/Zeitoon",
@@ -21,7 +21,7 @@
     "test": "vitest --ui",
     "coverage": "vitest run --coverage",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
+    "deploy": "gh-pages -d build -b gh-pages --no-history",
     "android:sync": "npm run build && npx cap sync android",
     "android:apk": "npm run android:sync && npm run android:assemble",
     "android:assemble": "node -e \"require('child_process').execSync('gradlew.bat assembleRelease -I init.gradle', {cwd: 'android', stdio: 'inherit', env: process.env})\""
