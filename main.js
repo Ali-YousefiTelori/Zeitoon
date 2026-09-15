@@ -2,8 +2,13 @@ const { app, BrowserWindow, Notification, ipcMain } = require("electron");
 const { execFile } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const https = require("https");
+const { pathToFileURL } = require("url");
 
 const WINDOWS_TASK_NAME = "Zeitoon Verse Reminder";
+const activeAudioDownloads = new Map();
+const audioDirectory = () => path.join(app.getPath("userData"), "audio");
+const audioFilePath = key => path.join(audioDirectory(), `${encodeURIComponent(key)}.mp3`);
 const getQuranSurahName = chapter => {
   const surahNamesPath = path.join(app.getAppPath(), "src", "assets", "surah-names.json");
   const surahNames = JSON.parse(fs.readFileSync(surahNamesPath, "utf8"));
@@ -85,6 +90,74 @@ ipcMain.handle("configure-notification-schedule", async (_event, { enabled, inte
     );
   });
   return true;
+});
+
+ipcMain.handle("get-local-audio-url", async (_event, { key }) => {
+  const filePath = audioFilePath(key);
+  return fs.existsSync(filePath) ? pathToFileURL(filePath).toString() : null;
+});
+
+ipcMain.handle("delete-audio", async (_event, { key }) => {
+  await fs.promises.rm(audioFilePath(key), { force: true });
+});
+
+ipcMain.handle("download-audio", async (event, { url, key, jobId }) => {
+  await fs.promises.mkdir(audioDirectory(), { recursive: true });
+  const destination = audioFilePath(key);
+  const temporary = `${destination}.download`;
+
+  await new Promise((resolve, reject) => {
+    let request;
+    let output;
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      activeAudioDownloads.delete(jobId);
+      if (error) {
+        fs.rm(temporary, { force: true }, () => reject(error));
+      } else {
+        resolve(value);
+      }
+    };
+
+    const cancel = () => {
+      request?.destroy();
+      output?.destroy();
+      finish(new Error("AUDIO_DOWNLOAD_CANCELLED"));
+    };
+    activeAudioDownloads.set(jobId, { cancel });
+
+    request = https.get(url, response => {
+      if (response.statusCode !== 200) {
+        response.resume();
+        finish(new Error(`Audio download failed (${response.statusCode})`));
+        return;
+      }
+      const total = Number(response.headers["content-length"]) || 0;
+      let loaded = 0;
+      output = fs.createWriteStream(temporary);
+      response.on("data", chunk => {
+        loaded += chunk.length;
+        event.sender.send("audio-download-progress", {
+          jobId,
+          progress: total ? loaded / total : 0,
+        });
+      });
+      response.pipe(output);
+      output.on("finish", () => output.close(() => {
+        fs.rename(temporary, destination, error =>
+          error ? finish(error) : finish(null),
+        );
+      }));
+      output.on("error", finish);
+    });
+    request.on("error", finish);
+  });
+});
+
+ipcMain.handle("cancel-audio-download", async (_event, { jobId }) => {
+  activeAudioDownloads.get(jobId)?.cancel();
 });
 
 app.on("ready", () => {

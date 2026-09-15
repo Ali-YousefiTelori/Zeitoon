@@ -11,6 +11,20 @@ contextBridge.exposeInMainWorld("electronNotifications", {
   },
 });
 
+contextBridge.exposeInMainWorld("electronAudio", {
+  download: (url, key, jobId) => ipcRenderer.invoke("download-audio", { url, key, jobId }),
+  cancelDownload: jobId => ipcRenderer.invoke("cancel-audio-download", { jobId }),
+  delete: key => ipcRenderer.invoke("delete-audio", { key }),
+  onProgress: (jobId, callback) => {
+    const handler = (_event, payload) => {
+      if (payload.jobId === jobId) callback(payload.progress);
+    };
+    ipcRenderer.on("audio-download-progress", handler);
+    return () => ipcRenderer.removeListener("audio-download-progress", handler);
+  },
+  getLocalUrl: key => ipcRenderer.invoke("get-local-audio-url", { key }),
+});
+
 window.addEventListener("DOMContentLoaded", () => {
   const replaceText = (selector, text) => {
     const element = document.getElementById(selector);

@@ -3,6 +3,7 @@ import { IconArrowLeft, IconArrowRight, IconSearch } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { getChapters, getQuranSurahNames } from "../api";
 import usePreviousAndNextHandlers from "../hooks/usePreviousAndNext";
+import Audio from "./Audio";
 import GoToVerseModal from "./GoToVerseModal";
 import { useEffect, useState } from "react";
 
@@ -65,6 +66,8 @@ const SubHeader = () => {
       </ActionIcon>
 
       <Title order={4}>{title}</Title>
+
+      <Audio />
 
       <ActionIcon
         variant="transparent"
