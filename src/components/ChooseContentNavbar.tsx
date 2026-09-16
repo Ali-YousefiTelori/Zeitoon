@@ -105,10 +105,10 @@ const ChooseContentNavbar = ({
                 href="/"
                 onClick={event => {
                   event.preventDefault();
-                  navigate(`/${book}/1/1`, { replace: true });
                   setActiveBook(book);
                   setActiveChapter(1);
                   setActiveVerse(1);
+                  navigate(`/${book}/1/1`, { replace: true });
                 }}
                 key={book}
                 title={"nav-book-" + book}
@@ -128,9 +128,9 @@ const ChooseContentNavbar = ({
                 href="/"
                 onClick={event => {
                   event.preventDefault();
-                  navigate(`/${activeBook}/${chapter}/1`, { replace: true });
                   setActiveChapter(chapter);
                   setActiveVerse(1);
+                  navigate(`/${activeBook}/${chapter}/1`, { replace: true });
                 }}
                 key={chapter}
                 title={"nav-chapter-" + chapter}
@@ -150,8 +150,8 @@ const ChooseContentNavbar = ({
                 href="/"
                 onClick={event => {
                   event.preventDefault();
-                  navigate(`/${activeBook}/${activeChapter}/${verse}`);
                   setActiveVerse(verse);
+                  navigate(`/${activeBook}/${activeChapter}/${verse}`);
                   setOpened(false);
                 }}
                 key={verse}

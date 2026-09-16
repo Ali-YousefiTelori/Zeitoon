@@ -33,12 +33,13 @@ const Audio = () => {
   const autoStartedRef = useRef(false);
   const playbackGenerationRef = useRef(0);
   const playerTokenRef = useRef(0);
+  const loadingGenerationRef = useRef<number | null>(null);
   const bibleBoundariesRef = useRef<{ verse: number; start: number; end: number }[]>([]);
   const lastSyncedVerseRef = useRef<number | null>(null);
 
   const unload = () => {
     howlsRef.current.forEach(howl => howl.unload());
-    if (howlsRef.current.length && playerTokenRef.current === activePlayerToken) {
+    if (playerTokenRef.current === activePlayerToken) {
       Howler.stop();
       activePlayerToken += 1;
     }
@@ -145,8 +146,10 @@ const Audio = () => {
   };
 
   const startPlayback = async () => {
-    if (!activeBook || !activeChapter || !activeVerse || isLoading) return;
+    if (!activeBook || !activeChapter || !activeVerse) return;
     const playbackGeneration = playbackGenerationRef.current;
+    if (loadingGenerationRef.current === playbackGeneration) return;
+    loadingGenerationRef.current = playbackGeneration;
     const playerToken = ++activePlayerToken;
     playerTokenRef.current = playerToken;
     Howler.stop();
@@ -231,6 +234,10 @@ const Audio = () => {
       setIsPlaying(false);
       setHasError(true);
       autoplayRequested = false;
+    } finally {
+      if (loadingGenerationRef.current === playbackGeneration) {
+        loadingGenerationRef.current = null;
+      }
     }
   };
 
