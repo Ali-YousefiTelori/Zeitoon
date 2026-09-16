@@ -37,6 +37,7 @@ const Audio = () => {
   const loadingGenerationRef = useRef<number | null>(null);
   const bibleBoundariesRef = useRef<{ verse: number; start: number; end: number }[]>([]);
   const lastSyncedVerseRef = useRef<number | null>(null);
+  const automaticVerseChangeRef = useRef<number | null>(null);
 
   const unload = () => {
     howlsRef.current.forEach(howl => howl.unload());
@@ -54,6 +55,7 @@ const Audio = () => {
     unload();
     bibleBoundariesRef.current = [];
     lastSyncedVerseRef.current = null;
+    automaticVerseChangeRef.current = null;
     setIsPlaying(false);
     setPosition(0);
     setDuration(0);
@@ -95,6 +97,7 @@ const Audio = () => {
         );
         if (activeBoundary && activeBoundary.verse !== lastSyncedVerseRef.current) {
           lastSyncedVerseRef.current = activeBoundary.verse;
+          automaticVerseChangeRef.current = activeBoundary.verse;
           setActiveVerse(activeBoundary.verse);
           navigate(`/${activeBook}/${activeChapter}/${activeBoundary.verse}`, { replace: true });
         }
@@ -107,6 +110,10 @@ const Audio = () => {
 
   useEffect(() => {
     if (activeBook === "قرآن" || !isPlaying || !howlsRef.current.length) return;
+    if (automaticVerseChangeRef.current === activeVerse) {
+      automaticVerseChangeRef.current = null;
+      return;
+    }
     if (lastSyncedVerseRef.current === activeVerse) return;
     const boundary = bibleBoundariesRef.current.find(item => item.verse === activeVerse);
     if (!boundary) return;
@@ -132,6 +139,7 @@ const Audio = () => {
     unload();
     bibleBoundariesRef.current = [];
     lastSyncedVerseRef.current = null;
+    automaticVerseChangeRef.current = null;
     autoplayRequested = true;
     if (activeBook === "قرآن") {
       const verses = await getVerses(activeBook, activeChapter);
