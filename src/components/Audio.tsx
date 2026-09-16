@@ -2,34 +2,53 @@ import { useEffect, useRef, useState } from "react";
 import { Howl } from "howler";
 import { ActionIcon, Box, Group, Progress, Slider, Text, rem } from "@mantine/core";
 import { IconPlayerPause, IconPlayerPlay } from "@tabler/icons-react";
-import { useParams } from "react-router-dom";
-import { prepareAudioForPlayback } from "../services/audio";
+import { useNavigate, useParams } from "react-router-dom";
+import { getVerses } from "../api";
+import { AudioSegment, getAudioSegments, prepareAudioSegmentForPlayback } from "../services/audio";
 import { useBibleStore } from "../store";
+import usePreviousAndNextHandlers from "../hooks/usePreviousAndNext";
+
+let autoplayRequested = false;
 
 const Audio = () => {
+  const { activeBook, activeChapter: chapterParam, activeVerse: verseParam } = useParams();
+  const activeChapter = Number(chapterParam);
+  const activeVerse = Number(verseParam);
+  const navigate = useNavigate();
+  const { nextHandler } = usePreviousAndNextHandlers();
+  const playbackRate = useBibleStore(state => state.playbackRate);
+  const setActiveVerse = useBibleStore(state => state.setActiveVerse);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [hasError, setHasError] = useState(false);
-  const audioRef = useRef<Howl | null>(null);
+  const howlsRef = useRef<Howl[]>([]);
+  const segmentsRef = useRef<AudioSegment[]>([]);
+  const currentIndexRef = useRef(0);
   const positionTimer = useRef<number | null>(null);
-  const activeBook = useParams().activeBook;
-  const activeChapter = Number(useParams().activeChapter);
-  const playbackRate = useBibleStore(state => state.playbackRate);
+  const autoStartedRef = useRef(false);
+
+  const unload = () => {
+    howlsRef.current.forEach(howl => howl.unload());
+    howlsRef.current = [];
+    segmentsRef.current = [];
+    currentIndexRef.current = 0;
+  };
 
   useEffect(() => {
-    audioRef.current?.unload();
-    audioRef.current = null;
+    unload();
     setIsPlaying(false);
     setPosition(0);
     setDuration(0);
     setHasError(false);
-  }, [activeBook, activeChapter]);
+    autoStartedRef.current = false;
+    return unload;
+  }, [activeBook, activeChapter, activeVerse]);
 
   useEffect(() => {
-    audioRef.current?.rate(playbackRate);
+    howlsRef.current.forEach(howl => howl.rate(playbackRate));
   }, [playbackRate]);
 
   useEffect(() => {
@@ -38,85 +57,142 @@ const Audio = () => {
       positionTimer.current = null;
       return;
     }
-
     positionTimer.current = window.setInterval(() => {
-      const audio = audioRef.current;
-      if (audio) setPosition(Number(audio.seek()) || 0);
+      const howl = howlsRef.current[currentIndexRef.current];
+      if (!howl) return;
+      const priorDuration = howlsRef.current
+        .slice(0, currentIndexRef.current)
+        .reduce((total, item) => total + item.duration(), 0);
+      setPosition(priorDuration + (Number(howl.seek()) || 0));
     }, 250);
-
     return () => {
       if (positionTimer.current !== null) window.clearInterval(positionTimer.current);
     };
   }, [isPlaying]);
 
-  useEffect(() => {
-    return () => {
-      audioRef.current?.unload();
-    };
-  }, []);
-
-  const handlePlayPause = async () => {
-    const audio = audioRef.current;
-    if (audio) {
-      if (audio.playing()) {
-        audio.pause();
-        setIsPlaying(false);
-      } else {
-        audio.play();
-        setIsPlaying(true);
-      }
+  const advance = async () => {
+    const nextIndex = currentIndexRef.current + 1;
+    if (nextIndex < howlsRef.current.length) {
+      currentIndexRef.current = nextIndex;
+      setPosition(
+        howlsRef.current.slice(0, nextIndex).reduce((total, item) => total + item.duration(), 0),
+      );
+      howlsRef.current[nextIndex].play();
       return;
     }
 
+    setIsPlaying(false);
+    setPosition(0);
+    unload();
+    autoplayRequested = true;
+    if (activeBook === "قرآن") {
+      const verses = await getVerses(activeBook, activeChapter);
+      const lastVerse = verses[verses.length - 1];
+      if (activeVerse < lastVerse) {
+        const nextVerse = activeVerse + 1;
+        setActiveVerse(nextVerse);
+        navigate(`/${activeBook}/${activeChapter}/${nextVerse}`, { replace: true });
+        return;
+      }
+    }
+    nextHandler();
+  };
+
+  const startPlayback = async () => {
+    if (!activeBook || !activeChapter || !activeVerse || isLoading) return;
     setIsLoading(true);
     setLoadProgress(0);
     setHasError(false);
     try {
-      const source = await prepareAudioForPlayback(
-        activeBook || "",
-        activeChapter,
-        setLoadProgress,
+      const segments = await getAudioSegments(activeBook, activeChapter, activeVerse);
+      const howls: Howl[] = [];
+      for (let index = 0; index < segments.length; index += 1) {
+        const source = await prepareAudioSegmentForPlayback(segments[index], progress =>
+          setLoadProgress((index + progress) / segments.length),
+        );
+        if (!source) throw new Error("Audio file is unavailable");
+        const howl = await new Promise<Howl>((resolve, reject) => {
+          let created: Howl;
+          created = new Howl({
+            src: [source],
+            html5: true,
+            pool: 1,
+            rate: playbackRate,
+            onload: () => resolve(created),
+            onloaderror: () => reject(new Error("Audio file is unavailable")),
+          });
+        });
+        howls.push(howl);
+      }
+      segmentsRef.current = segments;
+      howlsRef.current = howls;
+      currentIndexRef.current = 0;
+      setDuration(howls.reduce((total, howl) => total + howl.duration(), 0));
+      howls.forEach((howl, index) =>
+        howl.on("end", () => {
+          if (index === currentIndexRef.current) void advance();
+        }),
       );
-      if (!source) throw new Error("Audio file is unavailable");
-
-      const audioHowl = new Howl({
-        src: [source],
-        html5: true,
-        pool: 1,
-        rate: playbackRate,
-        onload: () => {
-          setIsLoading(false);
-          setDuration(audioHowl.duration());
-        },
-        onloaderror: () => {
-          setIsLoading(false);
-          setIsPlaying(false);
-          setHasError(true);
-        },
-        onplay: () => setIsPlaying(true),
-        onpause: () => setIsPlaying(false),
-        onend: () => {
-          setIsPlaying(false);
-          setPosition(0);
-        },
-      });
-      audioRef.current = audioHowl;
-      audioHowl.play();
+      setIsLoading(false);
+      setIsPlaying(true);
+      howls[0].play();
     } catch {
+      unload();
       setIsLoading(false);
       setIsPlaying(false);
       setHasError(true);
+      autoplayRequested = false;
     }
   };
 
+  useEffect(() => {
+    if (autoplayRequested && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      void startPlayback();
+    }
+  }, [activeBook, activeChapter, activeVerse]);
+
+  const handlePlayPause = () => {
+    const howl = howlsRef.current[currentIndexRef.current];
+    if (howl) {
+      if (howl.playing()) {
+        howl.pause();
+        setIsPlaying(false);
+        autoplayRequested = false;
+      } else {
+        howl.play();
+        setIsPlaying(true);
+        autoplayRequested = true;
+      }
+      return;
+    }
+    autoplayRequested = true;
+    void startPlayback();
+  };
+
   const handleSeek = (value: number) => {
-    audioRef.current?.seek(value);
-    setPosition(value);
+    let remaining = value;
+    for (let index = 0; index < howlsRef.current.length; index += 1) {
+      const itemDuration = howlsRef.current[index].duration();
+      if (remaining <= itemDuration || index === howlsRef.current.length - 1) {
+        currentIndexRef.current = index;
+        howlsRef.current.forEach((item, itemIndex) => {
+          if (itemIndex !== index) item.pause();
+        });
+        howlsRef.current[index].seek(Math.max(0, remaining));
+        if (isPlaying) howlsRef.current[index].play();
+        setPosition(value);
+        return;
+      }
+      remaining -= itemDuration;
+    }
   };
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60).toString().padStart(2, "0");
+    const remainingSeconds = Math.floor(seconds % 60)
+      .toString()
+      .padStart(2, "0");
     return `${minutes}:${remainingSeconds}`;
   };
 
@@ -124,7 +200,7 @@ const Audio = () => {
     <Box style={{ position: "relative", minWidth: rem(150), flex: 1, maxWidth: rem(260) }}>
       {isLoading && (
         <Progress
-          value={loadProgress ? loadProgress * 100 : 100}
+          value={loadProgress * 100 || 100}
           size={2}
           animate
           style={{ position: "absolute", top: -4, left: 0, right: 0 }}
@@ -135,9 +211,9 @@ const Audio = () => {
         <ActionIcon
           variant="default"
           onClick={handlePlayPause}
-          disabled={activeBook === "قرآن" || isLoading}
+          disabled={isLoading}
           aria-label={hasError ? "خطا در پخش صوت" : isPlaying ? "مکث صوت" : "پخش صوت"}
-        title={activeBook === "قرآن" ? "صوت قرآن هنوز اضافه نشده است" : hasError ? "فایل صوتی در دسترس نیست" : undefined}
+          title={hasError ? "فایل صوتی در دسترس نیست" : undefined}
         >
           {isPlaying ? <IconPlayerPause size={rem(20)} /> : <IconPlayerPlay size={rem(20)} />}
         </ActionIcon>
@@ -148,7 +224,7 @@ const Audio = () => {
         min={0}
         max={duration || 1}
         onChange={handleSeek}
-        disabled={!duration || activeBook === "قرآن"}
+        disabled={!duration}
         size="xs"
         mt={4}
       />

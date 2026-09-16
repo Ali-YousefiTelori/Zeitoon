@@ -1,7 +1,8 @@
-import { getBooks, getChapters } from "../api";
+import { getBooks, getChapters, getVerses } from "../api";
 
 const AUDIO_BASE_URL = "https://www.wordproaudio.net/bibles/app/audio/20";
-const UNSUPPORTED_AUDIO_BOOKS = new Set(["قرآن"]);
+const QURAN_AUDIO_BASE_URL = "https://tanzil.net/res/audio";
+const QURAN_BOOK_NAME = "قرآن";
 const AUDIO_DB_NAME = "zeitoon-audio";
 const AUDIO_STORE_NAME = "files";
 
@@ -29,14 +30,55 @@ const getBookIndex = async (bookName: string) => {
 };
 
 export const getAudioUrl = async (bookName: string, chapter: number) => {
-  if (UNSUPPORTED_AUDIO_BOOKS.has(bookName)) {
-    throw new Error(`Audio is not available for ${bookName}`);
+  if (bookName === QURAN_BOOK_NAME) {
+    throw new Error("Quran audio requires a verse number");
   }
   const bookIndex = await getBookIndex(bookName);
   return `${AUDIO_BASE_URL}/${bookIndex}/${chapter}.mp3`;
 };
 
-const getAudioKey = (bookName: string, chapter: number) => `${bookName}:${chapter}`;
+const getAudioKey = (bookName: string, chapter: number, verse?: number, translation = false) =>
+  verse === undefined
+    ? `${bookName}:${chapter}`
+    : `${bookName}:${chapter}:${verse}:${translation ? "translation" : "original"}`;
+
+const padQuranNumber = (value: number) => String(value).padStart(3, "0");
+
+export interface AudioSegment {
+  key: string;
+  url: string;
+  label: "اصل متن" | "ترجمه" | "فصل";
+}
+
+export const getAudioSegments = async (
+  bookName: string,
+  chapter: number,
+  verse: number,
+): Promise<AudioSegment[]> => {
+  if (bookName !== QURAN_BOOK_NAME) {
+    return [
+      {
+        key: getAudioKey(bookName, chapter),
+        url: await getAudioUrl(bookName, chapter),
+        label: "فصل",
+      },
+    ];
+  }
+
+  const fileName = `${padQuranNumber(chapter)}${padQuranNumber(verse)}.mp3`;
+  return [
+    {
+      key: getAudioKey(bookName, chapter, verse),
+      url: `${QURAN_AUDIO_BASE_URL}/afasy/${fileName}`,
+      label: "اصل متن",
+    },
+    {
+      key: getAudioKey(bookName, chapter, verse, true),
+      url: `${QURAN_AUDIO_BASE_URL}/fa.makarem/${fileName}`,
+      label: "ترجمه",
+    },
+  ];
+};
 
 const openAudioDb = () =>
   new Promise<IDBDatabase>((resolve, reject) => {
@@ -52,7 +94,10 @@ const getStoredAudio = async (key: string) => {
 
   const db = await openAudioDb();
   return new Promise<string | null>((resolve, reject) => {
-    const request = db.transaction(AUDIO_STORE_NAME, "readonly").objectStore(AUDIO_STORE_NAME).get(key);
+    const request = db
+      .transaction(AUDIO_STORE_NAME, "readonly")
+      .objectStore(AUDIO_STORE_NAME)
+      .get(key);
     request.onsuccess = () => {
       const blob = request.result as Blob | undefined;
       resolve(blob ? URL.createObjectURL(blob) : null);
@@ -67,7 +112,10 @@ const hasStoredAudio = async (key: string) => {
 
   const db = await openAudioDb();
   return new Promise<boolean>((resolve, reject) => {
-    const request = db.transaction(AUDIO_STORE_NAME, "readonly").objectStore(AUDIO_STORE_NAME).get(key);
+    const request = db
+      .transaction(AUDIO_STORE_NAME, "readonly")
+      .objectStore(AUDIO_STORE_NAME)
+      .get(key);
     request.onsuccess = () => resolve(Boolean(request.result));
     request.onerror = () => reject(request.error);
   });
@@ -76,7 +124,10 @@ const hasStoredAudio = async (key: string) => {
 const saveStoredAudio = async (key: string, blob: Blob) => {
   const db = await openAudioDb();
   return new Promise<void>((resolve, reject) => {
-    const request = db.transaction(AUDIO_STORE_NAME, "readwrite").objectStore(AUDIO_STORE_NAME).put(blob, key);
+    const request = db
+      .transaction(AUDIO_STORE_NAME, "readwrite")
+      .objectStore(AUDIO_STORE_NAME)
+      .put(blob, key);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
@@ -114,18 +165,16 @@ const downloadInBrowser = async (
 };
 
 const downloadOne = async (
-  bookName: string,
-  chapter: number,
+  url: string,
+  key: string,
   onProgress: ProgressHandler,
   signal: AbortSignal,
 ) => {
   if (signal.aborted) throw new DOMException("Download paused", "AbortError");
-  const key = getAudioKey(bookName, chapter);
   if (await getStoredAudio(key)) {
     onProgress(1);
     return;
   }
-  const url = await getAudioUrl(bookName, chapter);
 
   if (window.electronAudio) {
     const jobId = crypto.randomUUID();
@@ -151,10 +200,26 @@ export const prepareAudioForPlayback = async (
   onProgress: ProgressHandler,
 ) => {
   if (window.electronAudio) {
-    await downloadOne(bookName, chapter, onProgress, new AbortController().signal);
+    await downloadOne(
+      await getAudioUrl(bookName, chapter),
+      getAudioKey(bookName, chapter),
+      onProgress,
+      new AbortController().signal,
+    );
     return getStoredAudio(getAudioKey(bookName, chapter));
   }
   return getPlayableAudioUrl(bookName, chapter);
+};
+
+export const prepareAudioSegmentForPlayback = async (
+  segment: AudioSegment,
+  onProgress: ProgressHandler,
+) => {
+  if (window.electronAudio) {
+    await downloadOne(segment.url, segment.key, onProgress, new AbortController().signal);
+    return getStoredAudio(segment.key);
+  }
+  return (await getStoredAudio(segment.key)) || segment.url;
 };
 
 export const getPlayableAudioUrl = async (bookName: string, chapter: number) => {
@@ -170,17 +235,65 @@ export const downloadBookAudio = async (
   const chapters = await getChapters(bookName);
   if (!chapters.length) throw new Error("No chapters found for this book");
 
+  if (bookName === QURAN_BOOK_NAME) {
+    const files = (
+      await Promise.all(
+        chapters.map(async chapter => {
+          const verses = await getVerses(bookName, chapter);
+          return (
+            await Promise.all(verses.map(verse => getAudioSegments(bookName, chapter, verse)))
+          ).flat();
+        }),
+      )
+    ).flat();
+    if (!files.length) throw new Error("No Quran verses found");
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      await downloadOne(
+        file.url,
+        file.key,
+        progress => onProgress((index + progress) / files.length),
+        signal,
+      );
+    }
+    onProgress(1);
+    return;
+  }
+
   for (let index = 0; index < chapters.length; index += 1) {
     const chapter = chapters[index];
-    await downloadOne(bookName, chapter, chapterProgress => {
-      onProgress((index + chapterProgress) / chapters.length);
-    }, signal);
+    await downloadOne(
+      await getAudioUrl(bookName, chapter),
+      getAudioKey(bookName, chapter),
+      chapterProgress => {
+        onProgress((index + chapterProgress) / chapters.length);
+      },
+      signal,
+    );
   }
   onProgress(1);
 };
 
 export const getBookAudioStatus = async (bookName: string) => {
   const chapters = await getChapters(bookName);
+  if (bookName === QURAN_BOOK_NAME) {
+    const files = (
+      await Promise.all(
+        chapters.map(async chapter => {
+          const verses = await getVerses(bookName, chapter);
+          return (
+            await Promise.all(verses.map(verse => getAudioSegments(bookName, chapter, verse)))
+          ).flat();
+        }),
+      )
+    ).flat();
+    const downloaded = await Promise.all(files.map(file => hasStoredAudio(file.key)));
+    return {
+      downloaded: downloaded.filter(Boolean).length,
+      total: files.length,
+      isComplete: files.length > 0 && downloaded.every(Boolean),
+    };
+  }
   const downloaded = await Promise.all(
     chapters.map(chapter => hasStoredAudio(getAudioKey(bookName, chapter))),
   );
@@ -193,9 +306,23 @@ export const getBookAudioStatus = async (bookName: string) => {
 
 export const deleteBookAudio = async (bookName: string) => {
   const chapters = await getChapters(bookName);
+  const keys =
+    bookName === QURAN_BOOK_NAME
+      ? (
+          await Promise.all(
+            chapters.map(async chapter => {
+              const verses = await getVerses(bookName, chapter);
+              return (
+                await Promise.all(verses.map(verse => getAudioSegments(bookName, chapter, verse)))
+              )
+                .flat()
+                .map(file => file.key);
+            }),
+          )
+        ).flat()
+      : chapters.map(chapter => getAudioKey(bookName, chapter));
   await Promise.all(
-    chapters.map(async chapter => {
-      const key = getAudioKey(bookName, chapter);
+    keys.map(async key => {
       if (window.electronAudio) {
         await window.electronAudio.delete(key);
         return;

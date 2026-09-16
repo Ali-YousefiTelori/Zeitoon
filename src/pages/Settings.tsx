@@ -20,8 +20,6 @@ import { getBooks } from "../api";
 import { deleteBookAudio, downloadBookAudio, getBookAudioStatus } from "../services/audio";
 import { useBibleStore } from "../store";
 
-const AUDIO_UNSUPPORTED_BOOKS = new Set(["قرآن"]);
-
 export function Settings() {
   const navigate = useNavigate();
   const [books, setBooks] = useState<string[]>([]);
@@ -53,10 +51,12 @@ export function Settings() {
 
   useEffect(() => {
     getBooks().then(async loadedBooks => {
-      const availableBooks = loadedBooks.filter(book => !AUDIO_UNSUPPORTED_BOOKS.has(book));
+      const availableBooks = loadedBooks;
       setBooks(availableBooks);
       const statuses = await Promise.all(
-        availableBooks.map(async book => [book, (await getBookAudioStatus(book)).isComplete] as const),
+        availableBooks.map(
+          async book => [book, (await getBookAudioStatus(book)).isComplete] as const,
+        ),
       );
       setCompletedBooks(Object.fromEntries(statuses));
     });
