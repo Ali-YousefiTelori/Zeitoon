@@ -10,6 +10,7 @@ import usePreviousAndNextHandlers from "../hooks/usePreviousAndNext";
 
 let autoplayRequested = false;
 let activePlayerToken = 0;
+const BIBLE_AUDIO_INTRO_SECONDS = 5;
 
 const Audio = () => {
   const { activeBook, activeChapter: chapterParam, activeVerse: verseParam } = useParams();
@@ -208,11 +209,12 @@ const Audio = () => {
           weight: Math.max(1, verse.text.replace(/\s/g, "").length),
         }));
         const totalWeight = weights.reduce((total, item) => total + item.weight, 0);
+        const contentDuration = Math.max(0, totalDuration - BIBLE_AUDIO_INTRO_SECONDS);
         let elapsed = 0;
         bibleBoundariesRef.current = weights.map(item => {
-          const start = elapsed;
-          elapsed += (totalDuration * item.weight) / totalWeight;
-          return { verse: item.verse, start, end: elapsed };
+          const start = BIBLE_AUDIO_INTRO_SECONDS + elapsed;
+          elapsed += (contentDuration * item.weight) / totalWeight;
+          return { verse: item.verse, start, end: BIBLE_AUDIO_INTRO_SECONDS + elapsed };
         });
         lastSyncedVerseRef.current = activeVerse;
       }
