@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Howl } from "howler";
+import { Howl, Howler } from "howler";
 import { ActionIcon, Box, Group, Progress, Slider, Text, rem } from "@mantine/core";
 import { IconPlayerPause, IconPlayerPlay } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -9,6 +9,7 @@ import { useBibleStore } from "../store";
 import usePreviousAndNextHandlers from "../hooks/usePreviousAndNext";
 
 let autoplayRequested = false;
+let activePlayerToken = 0;
 
 const Audio = () => {
   const { activeBook, activeChapter: chapterParam, activeVerse: verseParam } = useParams();
@@ -31,11 +32,16 @@ const Audio = () => {
   const positionTimer = useRef<number | null>(null);
   const autoStartedRef = useRef(false);
   const playbackGenerationRef = useRef(0);
+  const playerTokenRef = useRef(0);
   const bibleBoundariesRef = useRef<{ verse: number; start: number; end: number }[]>([]);
   const lastSyncedVerseRef = useRef<number | null>(null);
 
   const unload = () => {
     howlsRef.current.forEach(howl => howl.unload());
+    if (howlsRef.current.length && playerTokenRef.current === activePlayerToken) {
+      Howler.stop();
+      activePlayerToken += 1;
+    }
     howlsRef.current = [];
     segmentsRef.current = [];
     currentIndexRef.current = 0;
@@ -141,6 +147,9 @@ const Audio = () => {
   const startPlayback = async () => {
     if (!activeBook || !activeChapter || !activeVerse || isLoading) return;
     const playbackGeneration = playbackGenerationRef.current;
+    const playerToken = ++activePlayerToken;
+    playerTokenRef.current = playerToken;
+    Howler.stop();
     setIsLoading(true);
     setLoadProgress(0);
     setHasError(false);
@@ -156,7 +165,10 @@ const Audio = () => {
         const source = await prepareAudioSegmentForPlayback(segments[index], progress =>
           setLoadProgress((index + progress) / segments.length),
         );
-        if (playbackGeneration !== playbackGenerationRef.current) {
+        if (
+          playbackGeneration !== playbackGenerationRef.current ||
+          playerToken !== activePlayerToken
+        ) {
           howls.forEach(howl => howl.unload());
           return;
         }
@@ -174,7 +186,10 @@ const Audio = () => {
         });
         howls.push(howl);
       }
-      if (playbackGeneration !== playbackGenerationRef.current) {
+      if (
+        playbackGeneration !== playbackGenerationRef.current ||
+        playerToken !== activePlayerToken
+      ) {
         howls.forEach(howl => howl.unload());
         return;
       }
@@ -200,14 +215,17 @@ const Audio = () => {
       }
       howls.forEach((howl, index) =>
         howl.on("end", () => {
-          if (index === currentIndexRef.current) void advance();
+          if (playerToken === activePlayerToken && index === currentIndexRef.current) {
+            void advance();
+          }
         }),
       );
       setIsLoading(false);
       setIsPlaying(true);
-      howls[0].play();
+      if (playerToken === activePlayerToken) howls[0].play();
     } catch {
-      if (playbackGeneration !== playbackGenerationRef.current) return;
+      if (playbackGeneration !== playbackGenerationRef.current || playerToken !== activePlayerToken)
+        return;
       unload();
       setIsLoading(false);
       setIsPlaying(false);
