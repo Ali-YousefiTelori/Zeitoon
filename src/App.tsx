@@ -13,6 +13,7 @@ import { HashRouter, Navigate, Route, Routes, useNavigate } from "react-router-d
 import ChooseContentNavbar from "./components/ChooseContentNavbar";
 import MyHeader from "./components/MyHeader";
 import ReadingBootstrap from "./components/ReadingBootstrap";
+import { About } from "./pages/About";
 import Passage from "./pages/Passage";
 import { Readings } from "./pages/Readings";
 import { Search } from "./pages/Search";
@@ -179,6 +180,7 @@ export default function App() {
                 <Route key={0} path="/saved" element={<SavedVerses />} />
                 <Route key={0} path="/settings" element={<Settings />} />
                 <Route key={0} path="/readings" element={<Readings />} />
+                <Route key={0} path="/about" element={<About />} />
               </Routes>
             </AppShell>
           </ReadingBootstrap>
