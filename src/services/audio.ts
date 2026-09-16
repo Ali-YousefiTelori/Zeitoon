@@ -1,4 +1,5 @@
 import { getBooks, getChapters, getVerses } from "../api";
+import type { TextDisplayMode } from "../store";
 
 const AUDIO_BASE_URL = "https://www.wordproaudio.net/bibles/app/audio/20";
 const QURAN_AUDIO_BASE_URL = "https://tanzil.net/res/audio";
@@ -54,6 +55,7 @@ export const getAudioSegments = async (
   bookName: string,
   chapter: number,
   verse: number,
+  textDisplayMode: TextDisplayMode = "both",
 ): Promise<AudioSegment[]> => {
   if (bookName !== QURAN_BOOK_NAME) {
     return [
@@ -66,7 +68,7 @@ export const getAudioSegments = async (
   }
 
   const fileName = `${padQuranNumber(chapter)}${padQuranNumber(verse)}.mp3`;
-  return [
+  const segments: AudioSegment[] = [
     {
       key: getAudioKey(bookName, chapter, verse),
       url: `${QURAN_AUDIO_BASE_URL}/afasy/${fileName}`,
@@ -78,6 +80,9 @@ export const getAudioSegments = async (
       label: "ترجمه",
     },
   ];
+  if (textDisplayMode === "original") return segments.slice(0, 1);
+  if (textDisplayMode === "translation") return segments.slice(1);
+  return segments;
 };
 
 const openAudioDb = () =>

@@ -53,6 +53,7 @@ function MoreInformationDrawer({
   const copyIncludeOriginalText = useBibleStore(state => state.copyIncludeOriginalText);
   const copyIncludeTransliteration = useBibleStore(state => state.copyIncludeTransliteration);
   const copyIncludeTranslation = useBibleStore(state => state.copyIncludeTranslation);
+  const textDisplayMode = useBibleStore(state => state.textDisplayMode);
 
   const [savedKeyValue, setSavedKeyValue] = useInputState("");
   const [popoverOpened, setPopoverOpened] = useState(false);
@@ -198,7 +199,7 @@ function MoreInformationDrawer({
               originalText={originalText}
               transliteration={transliteration}
               verse={text}
-              showOriginalText={true}
+              textDisplayMode={textDisplayMode}
               showMoreInformationIcon={false}
             />
             {content?.length ? (

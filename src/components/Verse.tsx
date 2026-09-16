@@ -48,14 +48,10 @@ const Verse = ({
   const activeChapterFromParams = Number(useParams().activeChapter);
   const activeVerseFromParams = Number(useParams().activeVerse);
   const activeBookFromParams = useParams().activeBook as string;
-  const showOriginalTextSetting = useBibleStore(state => state.showOriginalTextSetting);
+  const textDisplayMode = useBibleStore(state => state.textDisplayMode);
   const setActiveVerse = useBibleStore(state => state.setActiveVerse);
 
-  const verseKey = createVerseSelectionKey(
-    activeBookFromParams,
-    activeChapterFromParams,
-    verse,
-  );
+  const verseKey = createVerseSelectionKey(activeBookFromParams, activeChapterFromParams, verse);
 
   const onLongPress = () => {
     navigate(`/${activeBookFromParams}/${activeChapterFromParams}/${verse}`, { replace: true });
@@ -117,7 +113,7 @@ const Verse = ({
               originalText={originalText}
               transliteration={transliteration}
               verse={text}
-              showOriginalText={showOriginalTextSetting}
+              textDisplayMode={textDisplayMode}
               showMoreInformationIcon={!!content?.length}
             />
           </Flex>

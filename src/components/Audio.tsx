@@ -17,6 +17,7 @@ const Audio = () => {
   const navigate = useNavigate();
   const { nextHandler } = usePreviousAndNextHandlers();
   const playbackRate = useBibleStore(state => state.playbackRate);
+  const textDisplayMode = useBibleStore(state => state.textDisplayMode);
   const setActiveVerse = useBibleStore(state => state.setActiveVerse);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +50,12 @@ const Audio = () => {
     setHasError(false);
     autoStartedRef.current = false;
     return unload;
-  }, [activeBook, activeChapter, activeBook === "قرآن" ? activeVerse : 0]);
+  }, [
+    activeBook,
+    activeChapter,
+    activeBook === "قرآن" ? activeVerse : 0,
+    activeBook === "قرآن" ? textDisplayMode : "both",
+  ]);
 
   useEffect(() => {
     howlsRef.current.forEach(howl => howl.rate(playbackRate));
@@ -133,7 +139,12 @@ const Audio = () => {
     setLoadProgress(0);
     setHasError(false);
     try {
-      const segments = await getAudioSegments(activeBook, activeChapter, activeVerse);
+      const segments = await getAudioSegments(
+        activeBook,
+        activeChapter,
+        activeVerse,
+        textDisplayMode,
+      );
       const howls: Howl[] = [];
       for (let index = 0; index < segments.length; index += 1) {
         const source = await prepareAudioSegmentForPlayback(segments[index], progress =>
@@ -195,7 +206,7 @@ const Audio = () => {
       autoStartedRef.current = true;
       void startPlayback();
     }
-  }, [activeBook, activeChapter, activeVerse]);
+  }, [activeBook, activeChapter, activeVerse, activeBook === "قرآن" ? textDisplayMode : "both"]);
 
   const handlePlayPause = () => {
     const howl = howlsRef.current[currentIndexRef.current];

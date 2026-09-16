@@ -1,11 +1,18 @@
-import { AppShell, Button, ColorScheme, ColorSchemeProvider, MantineProvider, Paper, Text } from "@mantine/core";
+import {
+  AppShell,
+  Button,
+  ColorScheme,
+  ColorSchemeProvider,
+  MantineProvider,
+  Paper,
+  Text,
+} from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import ChooseContentNavbar from "./components/ChooseContentNavbar";
 import MyHeader from "./components/MyHeader";
 import ReadingBootstrap from "./components/ReadingBootstrap";
-import { About } from "./pages/About";
 import Passage from "./pages/Passage";
 import { Readings } from "./pages/Readings";
 import { Search } from "./pages/Search";
@@ -123,54 +130,57 @@ export default function App() {
           <PwaUpdateBanner />
           <ReadingBootstrap>
             <AppShell
-            pl="0"
-            navbar={<ChooseContentNavbar opened={opened} setOpened={setOpened} />}
-            header={
-              <MyHeader
-                colorScheme={colorScheme}
-                toggleColorScheme={toggleColorScheme}
-                opened={opened}
-                setOpened={setOpened}
-              />
-            }
-            styles={theme => ({
-              main: {
-                paddingLeft: "calc(var(--mantine-aside-width, 0px) + 1rem)",
-                paddingRight: "calc(var(--mantine-navbar-width, 0px) + 1rem)",
-                paddingTop: "var(--mantine-header-height, 0px)",
-                paddingBottom: "var(--mantine-footer-height, 0px)",
-                backgroundColor: theme.colorScheme === "dark" ? theme.colors.dark[8] : "#ffffff",
-              },
-            })}
-          >
-            <Routes>
-              <Route
-                path="*"
-                element={<Navigate to={`/${activeBook}/${activeChapter}/${activeVerse}`} replace />}
-              />
-              <Route
-                index
-                element={<Navigate to={`/${activeBook}/${activeChapter}/${activeVerse}`} replace />}
-              />
-              <Route
-                key={0}
-                path="/:activeBook/:activeChapter/:activeVerse"
-                element={<Passage />}
-              />
-              <Route key={0} path="/search" element={<Search />} />
-              <Route key={0} path="/about" element={<About />} />
-              {/* <Route
+              pl="0"
+              navbar={<ChooseContentNavbar opened={opened} setOpened={setOpened} />}
+              header={
+                <MyHeader
+                  colorScheme={colorScheme}
+                  toggleColorScheme={toggleColorScheme}
+                  opened={opened}
+                  setOpened={setOpened}
+                />
+              }
+              styles={theme => ({
+                main: {
+                  paddingLeft: "calc(var(--mantine-aside-width, 0px) + 1rem)",
+                  paddingRight: "calc(var(--mantine-navbar-width, 0px) + 1rem)",
+                  paddingTop: "var(--mantine-header-height, 0px)",
+                  paddingBottom: "var(--mantine-footer-height, 0px)",
+                  backgroundColor: theme.colorScheme === "dark" ? theme.colors.dark[8] : "#ffffff",
+                },
+              })}
+            >
+              <Routes>
+                <Route
+                  path="*"
+                  element={
+                    <Navigate to={`/${activeBook}/${activeChapter}/${activeVerse}`} replace />
+                  }
+                />
+                <Route
+                  index
+                  element={
+                    <Navigate to={`/${activeBook}/${activeChapter}/${activeVerse}`} replace />
+                  }
+                />
+                <Route
+                  key={0}
+                  path="/:activeBook/:activeChapter/:activeVerse"
+                  element={<Passage />}
+                />
+                <Route key={0} path="/search" element={<Search />} />
+                {/* <Route
                 key={0}
                 path="/content"
                 element={
                   <SearchContent />
                 }
               /> */}
-              <Route key={0} path="/saved" element={<SavedVerses />} />
-              <Route key={0} path="/settings" element={<Settings />} />
-              <Route key={0} path="/readings" element={<Readings />} />
-            </Routes>
-          </AppShell>
+                <Route key={0} path="/saved" element={<SavedVerses />} />
+                <Route key={0} path="/settings" element={<Settings />} />
+                <Route key={0} path="/readings" element={<Readings />} />
+              </Routes>
+            </AppShell>
           </ReadingBootstrap>
         </HashRouter>
       </MantineProvider>

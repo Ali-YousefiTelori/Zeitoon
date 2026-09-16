@@ -1,19 +1,21 @@
 import { Text, Title, rem, useMantineTheme } from "@mantine/core";
 import { IconDotsCircleHorizontal } from "@tabler/icons-react";
 
+import type { TextDisplayMode } from "../store";
+
 export const VerseDetails = ({
   originalText,
   transliteration,
   activeBookFromParams,
   verse,
-  showOriginalText = false,
+  textDisplayMode = "both",
   showMoreInformationIcon = false,
 }: {
   originalText: string;
   transliteration: string;
   activeBookFromParams: string | undefined;
   verse: string;
-  showOriginalText: boolean;
+  textDisplayMode: TextDisplayMode;
   showMoreInformationIcon: boolean;
 }) => {
   const theme = useMantineTheme();
@@ -22,7 +24,7 @@ export const VerseDetails = ({
 
   return (
     <>
-      {showOriginalText &&
+      {(textDisplayMode === "original" || textDisplayMode === "both") &&
         (activeBookFromParams === "قرآن" ? (
           <Title order={3} fz={rem(18)} fw={500} mb={rem(10)} ff={"Uthmani"}>
             {originalText}
@@ -71,10 +73,12 @@ export const VerseDetails = ({
             ))}
           </div>
         ))}
-      <Text fz="md" fw="normal" ml={3}>
-        {verse}
-        {showMoreInformationIcon && <IconDotsCircleHorizontal height={"1em"} width={"1em"} />}
-      </Text>
+      {(textDisplayMode === "translation" || textDisplayMode === "both") && (
+        <Text fz="md" fw="normal" ml={3}>
+          {verse}
+          {showMoreInformationIcon && <IconDotsCircleHorizontal height={"1em"} width={"1em"} />}
+        </Text>
+      )}
     </>
   );
 };

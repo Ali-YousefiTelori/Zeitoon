@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export const SEARCH_BOOKS = ["عهد قدیم", "انجیل", "قرآن", "کل کتاب"];
 export const SEARCH_TEXT = ["اصل متن", "ترجمه"];
+export type TextDisplayMode = "original" | "translation" | "both";
 
 export interface ReadingSession {
   id: string;
@@ -21,7 +22,7 @@ interface BibleState {
   searchBook: string;
   searchText: string;
   searchKey: string;
-  showOriginalTextSetting: boolean;
+  textDisplayMode: TextDisplayMode;
   copyIncludeOriginalText: boolean;
   copyIncludeTransliteration: boolean;
   copyIncludeTranslation: boolean;
@@ -41,7 +42,7 @@ interface BibleState {
   setSearchBook: (book: string) => void;
   setSearchText: (text: string) => void;
   setSearchKey: (key: string) => void;
-  setShowOriginalTextSetting: (key: boolean) => void;
+  setTextDisplayMode: (value: TextDisplayMode) => void;
   setCopyIncludeOriginalText: (value: boolean) => void;
   setCopyIncludeTransliteration: (value: boolean) => void;
   setCopyIncludeTranslation: (value: boolean) => void;
@@ -68,7 +69,7 @@ export const useBibleStore = create<BibleState>()(
       searchBook: SEARCH_BOOKS[3],
       searchText: SEARCH_TEXT[1],
       searchKey: "",
-      showOriginalTextSetting: true,
+      textDisplayMode: "both",
       copyIncludeOriginalText: true,
       copyIncludeTransliteration: true,
       copyIncludeTranslation: true,
@@ -87,9 +88,10 @@ export const useBibleStore = create<BibleState>()(
       setSearchBook: book => set({ searchBook: book }),
       setSearchText: text => set({ searchText: text }),
       setSearchKey: key => set({ searchKey: key }),
-      setShowOriginalTextSetting: key => set({ showOriginalTextSetting: key }),
+      setTextDisplayMode: textDisplayMode => set({ textDisplayMode }),
       setCopyIncludeOriginalText: copyIncludeOriginalText => set({ copyIncludeOriginalText }),
-      setCopyIncludeTransliteration: copyIncludeTransliteration => set({ copyIncludeTransliteration }),
+      setCopyIncludeTransliteration: copyIncludeTransliteration =>
+        set({ copyIncludeTransliteration }),
       setCopyIncludeTranslation: copyIncludeTranslation => set({ copyIncludeTranslation }),
       setFontSize: fontSize => set({ fontSize }),
       setPlaybackRate: playbackRate => set({ playbackRate }),

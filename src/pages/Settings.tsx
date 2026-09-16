@@ -44,6 +44,8 @@ export function Settings() {
   const setFontSize = useBibleStore(state => state.setFontSize);
   const playbackRate = useBibleStore(state => state.playbackRate);
   const setPlaybackRate = useBibleStore(state => state.setPlaybackRate);
+  const textDisplayMode = useBibleStore(state => state.textDisplayMode);
+  const setTextDisplayMode = useBibleStore(state => state.setTextDisplayMode);
   const notificationsEnabled = useBibleStore(state => state.notificationsEnabled);
   const notificationIntervalHours = useBibleStore(state => state.notificationIntervalHours);
   const setNotificationsEnabled = useBibleStore(state => state.setNotificationsEnabled);
@@ -141,6 +143,26 @@ export function Settings() {
             { label: "کوچک", value: "14" },
             { label: "متوسط", value: "16" },
             { label: "بزرگ", value: "18" },
+          ]}
+        />
+
+        <Divider
+          label={
+            <Text size="sm" fw={500}>
+              نمایش متن آیات
+            </Text>
+          }
+          labelPosition="center"
+        />
+
+        <SegmentedControl
+          fullWidth
+          value={textDisplayMode}
+          onChange={value => setTextDisplayMode(value as typeof textDisplayMode)}
+          data={[
+            { label: "اصل متن", value: "original" },
+            { label: "ترجمه", value: "translation" },
+            { label: "اصل متن و ترجمه", value: "both" },
           ]}
         />
 

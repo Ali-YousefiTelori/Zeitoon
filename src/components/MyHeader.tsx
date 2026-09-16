@@ -18,16 +18,14 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import {
-  IconBook,
   IconBooks,
-  IconCheck,
   IconChevronDown,
   IconFolders,
+  IconInfoCircle,
   IconMoonStars,
   IconSettings,
   IconSettings2,
   IconSun,
-  IconX,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import Icon from "../assets/icon.png";
@@ -62,8 +60,6 @@ const MyHeader = ({
   const navigate = useNavigate();
   const theme = useMantineTheme();
   const { classes } = useStyles();
-  const showOriginalTextSetting = useBibleStore(state => state.showOriginalTextSetting);
-  const setShowOriginalTextSetting = useBibleStore(state => state.setShowOriginalTextSetting);
   const readings = useBibleStore(state => state.readings);
   const activeReadingId = useBibleStore(state => state.activeReadingId);
   const continueReading = useBibleStore(state => state.continueReading);
@@ -168,27 +164,6 @@ const MyHeader = ({
               </Menu.Item>
 
               <Menu.Item
-                onClick={event => {
-                  event.preventDefault();
-                  setShowOriginalTextSetting(!showOriginalTextSetting);
-                }}
-                icon={
-                  <Switch
-                    checked={showOriginalTextSetting}
-                    onChange={event => {
-                      event.preventDefault();
-                      setShowOriginalTextSetting(!showOriginalTextSetting);
-                    }}
-                    size="lg"
-                    onLabel={<IconCheck color={theme.white} size="1.25rem" stroke={1.5} />}
-                    offLabel={<IconX color={theme.colors.gray[6]} size="1.25rem" stroke={1.5} />}
-                  />
-                }
-              >
-                اصل متن
-              </Menu.Item>
-
-              <Menu.Item
                 onClick={() => navigate("/readings")}
                 icon={<IconBooks className={classes.icons} />}
               >
@@ -208,15 +183,15 @@ const MyHeader = ({
               >
                 آیات ذخیره شده
               </Menu.Item>
+              <Menu.Item
+                onClick={() => navigate("/about")}
+                icon={<IconInfoCircle className={classes.icons} />}
+              >
+                درباره ما
+              </Menu.Item>
               {/* <Menu.Item onClick={() => navigate('/content')} icon={<IconQuestionMark className={classes.icons}/>}>
                 جست و جو در سوالات
               </Menu.Item> */}
-              <Menu.Item
-                onClick={() => navigate("/about")}
-                icon={<IconBook className={classes.icons} />}
-              >
-                مبانی ایمان
-              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
