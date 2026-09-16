@@ -112,20 +112,35 @@ const Audio = () => {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (activeBook === "قرآن" || !isPlaying || !howlsRef.current.length) return;
-    if (skipNextVerseSeekRef.current && automaticVerseChangeRef.current === activeVerse) {
-      skipNextVerseSeekRef.current = false;
-      automaticVerseChangeRef.current = null;
-      return;
-    }
-    if (lastSyncedVerseRef.current === activeVerse) return;
-    const boundary = bibleBoundariesRef.current.find(item => item.verse === activeVerse);
-    if (!boundary) return;
+    const handleManualBibleSeek = (event: Event) => {
+      const { book, chapter, verse } = (
+        event as CustomEvent<{
+          book: string;
+          chapter: number;
+          verse: number;
+        }>
+      ).detail;
+      if (
+        activeBook === "قرآن" ||
+        book !== activeBook ||
+        chapter !== activeChapter ||
+        !howlsRef.current.length
+      ) {
+        return;
+      }
 
-    howlsRef.current[0].seek(boundary.start);
-    setPosition(boundary.start);
-    lastSyncedVerseRef.current = activeVerse;
-  }, [activeBook, activeVerse, isPlaying]);
+      const boundary = bibleBoundariesRef.current.find(item => item.verse === verse);
+      if (!boundary) return;
+      howlsRef.current[0].seek(boundary.start);
+      setPosition(boundary.start);
+      lastSyncedVerseRef.current = verse;
+      automaticVerseChangeRef.current = null;
+      skipNextVerseSeekRef.current = false;
+    };
+
+    window.addEventListener("bible-audio-seek", handleManualBibleSeek);
+    return () => window.removeEventListener("bible-audio-seek", handleManualBibleSeek);
+  }, [activeBook, activeChapter]);
 
   const advance = async () => {
     const nextIndex = currentIndexRef.current + 1;
@@ -260,7 +275,12 @@ const Audio = () => {
       autoStartedRef.current = true;
       void startPlayback();
     }
-  }, [activeBook, activeChapter, activeVerse, activeBook === "قرآن" ? textDisplayMode : "both"]);
+  }, [
+    activeBook,
+    activeChapter,
+    activeBook === "قرآن" ? activeVerse : 0,
+    activeBook === "قرآن" ? textDisplayMode : "both",
+  ]);
 
   const handlePlayPause = () => {
     const howl = howlsRef.current[currentIndexRef.current];

@@ -151,6 +151,11 @@ const ChooseContentNavbar = ({
                 onClick={event => {
                   event.preventDefault();
                   setActiveVerse(verse);
+                  window.dispatchEvent(
+                    new CustomEvent("bible-audio-seek", {
+                      detail: { book: activeBook, chapter: activeChapter, verse },
+                    }),
+                  );
                   navigate(`/${activeBook}/${activeChapter}/${verse}`);
                   setOpened(false);
                 }}
