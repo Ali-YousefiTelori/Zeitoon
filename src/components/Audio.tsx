@@ -30,6 +30,7 @@ const Audio = () => {
   const currentIndexRef = useRef(0);
   const positionTimer = useRef<number | null>(null);
   const autoStartedRef = useRef(false);
+  const playbackGenerationRef = useRef(0);
   const bibleBoundariesRef = useRef<{ verse: number; start: number; end: number }[]>([]);
   const lastSyncedVerseRef = useRef<number | null>(null);
 
@@ -41,6 +42,7 @@ const Audio = () => {
   };
 
   useEffect(() => {
+    playbackGenerationRef.current += 1;
     unload();
     bibleBoundariesRef.current = [];
     lastSyncedVerseRef.current = null;
@@ -49,7 +51,10 @@ const Audio = () => {
     setDuration(0);
     setHasError(false);
     autoStartedRef.current = false;
-    return unload;
+    return () => {
+      playbackGenerationRef.current += 1;
+      unload();
+    };
   }, [
     activeBook,
     activeChapter,
@@ -135,6 +140,7 @@ const Audio = () => {
 
   const startPlayback = async () => {
     if (!activeBook || !activeChapter || !activeVerse || isLoading) return;
+    const playbackGeneration = playbackGenerationRef.current;
     setIsLoading(true);
     setLoadProgress(0);
     setHasError(false);
@@ -150,6 +156,10 @@ const Audio = () => {
         const source = await prepareAudioSegmentForPlayback(segments[index], progress =>
           setLoadProgress((index + progress) / segments.length),
         );
+        if (playbackGeneration !== playbackGenerationRef.current) {
+          howls.forEach(howl => howl.unload());
+          return;
+        }
         if (!source) throw new Error("Audio file is unavailable");
         const howl = await new Promise<Howl>((resolve, reject) => {
           let created: Howl;
@@ -163,6 +173,10 @@ const Audio = () => {
           });
         });
         howls.push(howl);
+      }
+      if (playbackGeneration !== playbackGenerationRef.current) {
+        howls.forEach(howl => howl.unload());
+        return;
       }
       segmentsRef.current = segments;
       howlsRef.current = howls;
@@ -193,6 +207,7 @@ const Audio = () => {
       setIsPlaying(true);
       howls[0].play();
     } catch {
+      if (playbackGeneration !== playbackGenerationRef.current) return;
       unload();
       setIsLoading(false);
       setIsPlaying(false);
