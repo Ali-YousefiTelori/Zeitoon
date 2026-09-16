@@ -1,4 +1,4 @@
-import { AppShell, ColorScheme, ColorSchemeProvider, MantineProvider } from "@mantine/core";
+import { AppShell, Button, ColorScheme, ColorSchemeProvider, MantineProvider, Paper, Text } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
@@ -46,6 +46,53 @@ function NotificationManager() {
   return null;
 }
 
+function PwaUpdateBanner() {
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  useEffect(() => {
+    const showUpdate = () => setUpdateAvailable(true);
+    window.addEventListener("pwa-update-available", showUpdate);
+    return () => window.removeEventListener("pwa-update-available", showUpdate);
+  }, []);
+
+  const updateApp = () => {
+    navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload(), {
+      once: true,
+    });
+    navigator.serviceWorker.ready.then(registration => {
+      registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+    });
+  };
+
+  if (!updateAvailable) return null;
+
+  return (
+    <Paper
+      withBorder
+      shadow="sm"
+      radius={0}
+      p="xs"
+      dir="rtl"
+      sx={{
+        position: "fixed",
+        top: 56,
+        left: 0,
+        right: 0,
+        zIndex: 300,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 12,
+      }}
+    >
+      <Text size="sm">نسخه جدید زیتون آماده است</Text>
+      <Button size="xs" onClick={updateApp}>
+        بروزرسانی
+      </Button>
+    </Paper>
+  );
+}
+
 export default function App() {
   const activeBook = useBibleStore(state => state.activeBook);
   const activeChapter = useBibleStore(state => state.activeChapter);
@@ -73,6 +120,7 @@ export default function App() {
       >
         <HashRouter>
           <NotificationManager />
+          <PwaUpdateBanner />
           <ReadingBootstrap>
             <AppShell
             pl="0"
