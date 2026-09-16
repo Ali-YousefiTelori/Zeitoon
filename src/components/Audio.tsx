@@ -3,7 +3,7 @@ import { Howl } from "howler";
 import { ActionIcon, Box, Group, Progress, Slider, Text, rem } from "@mantine/core";
 import { IconPlayerPause, IconPlayerPlay } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getVerses } from "../api";
+import { getVerses, getVersesInChapter } from "../api";
 import { AudioSegment, getAudioSegments, prepareAudioSegmentForPlayback } from "../services/audio";
 import { useBibleStore } from "../store";
 import usePreviousAndNextHandlers from "../hooks/usePreviousAndNext";
@@ -29,6 +29,8 @@ const Audio = () => {
   const currentIndexRef = useRef(0);
   const positionTimer = useRef<number | null>(null);
   const autoStartedRef = useRef(false);
+  const bibleBoundariesRef = useRef<{ verse: number; start: number; end: number }[]>([]);
+  const lastSyncedVerseRef = useRef<number | null>(null);
 
   const unload = () => {
     howlsRef.current.forEach(howl => howl.unload());
@@ -39,13 +41,15 @@ const Audio = () => {
 
   useEffect(() => {
     unload();
+    bibleBoundariesRef.current = [];
+    lastSyncedVerseRef.current = null;
     setIsPlaying(false);
     setPosition(0);
     setDuration(0);
     setHasError(false);
     autoStartedRef.current = false;
     return unload;
-  }, [activeBook, activeChapter, activeVerse]);
+  }, [activeBook, activeChapter, activeBook === "قرآن" ? activeVerse : 0]);
 
   useEffect(() => {
     howlsRef.current.forEach(howl => howl.rate(playbackRate));
@@ -63,12 +67,35 @@ const Audio = () => {
       const priorDuration = howlsRef.current
         .slice(0, currentIndexRef.current)
         .reduce((total, item) => total + item.duration(), 0);
-      setPosition(priorDuration + (Number(howl.seek()) || 0));
+      const currentPosition = priorDuration + (Number(howl.seek()) || 0);
+      setPosition(currentPosition);
+
+      if (activeBook !== "قرآن") {
+        const activeBoundary = bibleBoundariesRef.current.find(
+          boundary => currentPosition >= boundary.start && currentPosition < boundary.end,
+        );
+        if (activeBoundary && activeBoundary.verse !== lastSyncedVerseRef.current) {
+          lastSyncedVerseRef.current = activeBoundary.verse;
+          setActiveVerse(activeBoundary.verse);
+          navigate(`/${activeBook}/${activeChapter}/${activeBoundary.verse}`, { replace: true });
+        }
+      }
     }, 250);
     return () => {
       if (positionTimer.current !== null) window.clearInterval(positionTimer.current);
     };
   }, [isPlaying]);
+
+  useEffect(() => {
+    if (activeBook === "قرآن" || !isPlaying || !howlsRef.current.length) return;
+    if (lastSyncedVerseRef.current === activeVerse) return;
+    const boundary = bibleBoundariesRef.current.find(item => item.verse === activeVerse);
+    if (!boundary) return;
+
+    howlsRef.current[0].seek(boundary.start);
+    setPosition(boundary.start);
+    lastSyncedVerseRef.current = activeVerse;
+  }, [activeBook, activeVerse, isPlaying]);
 
   const advance = async () => {
     const nextIndex = currentIndexRef.current + 1;
@@ -84,6 +111,8 @@ const Audio = () => {
     setIsPlaying(false);
     setPosition(0);
     unload();
+    bibleBoundariesRef.current = [];
+    lastSyncedVerseRef.current = null;
     autoplayRequested = true;
     if (activeBook === "قرآن") {
       const verses = await getVerses(activeBook, activeChapter);
@@ -127,7 +156,23 @@ const Audio = () => {
       segmentsRef.current = segments;
       howlsRef.current = howls;
       currentIndexRef.current = 0;
-      setDuration(howls.reduce((total, howl) => total + howl.duration(), 0));
+      const totalDuration = howls.reduce((total, howl) => total + howl.duration(), 0);
+      setDuration(totalDuration);
+      if (activeBook !== "قرآن") {
+        const verses = await getVersesInChapter(activeBook, activeChapter);
+        const weights = verses.map(verse => ({
+          verse: verse.verse,
+          weight: Math.max(1, verse.text.replace(/\s/g, "").length),
+        }));
+        const totalWeight = weights.reduce((total, item) => total + item.weight, 0);
+        let elapsed = 0;
+        bibleBoundariesRef.current = weights.map(item => {
+          const start = elapsed;
+          elapsed += (totalDuration * item.weight) / totalWeight;
+          return { verse: item.verse, start, end: elapsed };
+        });
+        lastSyncedVerseRef.current = activeVerse;
+      }
       howls.forEach((howl, index) =>
         howl.on("end", () => {
           if (index === currentIndexRef.current) void advance();
